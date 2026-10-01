@@ -1,0 +1,25 @@
+Recorded: 2026-10-01 Asia/Shanghai
+Image: golang:1.27.0
+Image ID: sha256:4013ae0f9e7994f8535c58c811f8f863fbed38b72e0d51e6592156f758d66146
+Go: go1.27.0 linux/amd64
+Docker server: 29.8.1
+Pre-start loopback bind: PORT_38120_BIND_OK
+Container: bingyan-netdisk-app
+State: running
+uname -s: Linux
+Port bindings: {"8080/tcp":[{"HostIp":"127.0.0.1","HostPort":"38120"}]}
+Mount: volume bingyan-netdisk-data -> /data (rw)
+Mount: project bin directory -> /workspace/bin (ro)
+Temporary files after acceptance: 0
+Blob files after acceptance: 0
+Runtime log entries (container timestamps are UTC):
+2026/10/01 08:42:19 NetDisk listening on :8080
+2026/10/01 08:42:22 NetDisk listening on :8080
+Actual restart, health recovery, persisted account/session/file verified by scripts/verify.ps1.
+Git user.name: missing
+Git user.email: missing
+Global configuration changes: none
+Other project writes/container mutations: none in this task's operation history
+External model tasks and subagents launched: 0
+Go validation shell chain (exit 0): test -z "$(gofmt -l cmd internal)" && go test -count=1 -v ./... && go vet ./... && go build -trimpath -o bin/netdisk ./cmd/netdisk
+Captured evidence text only had trailing whitespace removed; test output content is unchanged.

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>冰岩网盘 · 我的文件</title>
+  <link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+  <section id="auth-view" class="auth-layout">
+    <div class="auth-story">
+      <a class="brand" href="/" aria-label="冰岩网盘首页"><span class="brand-mark">N</span><span>冰岩网盘<small>NETDISK</small></span></a>
+      <div class="story-copy"><span class="eyebrow">你的日常文件空间</span><h1>文件有序，<br>随时取用。</h1><p>从第一份文件开始。<br>上传、整理与下载，都在这里完成。</p></div>
+      <div class="story-foot"><span class="status-dot"></span> 个人文件 · 仅本人可访问</div>
+    </div>
+    <main class="auth-panel">
+      <div class="auth-card">
+        <span class="eyebrow">欢迎来到冰岩网盘</span><h2 id="auth-title">登录你的空间</h2><p id="auth-description" class="muted">继续管理你的文件。</p>
+        <div class="auth-tabs" aria-label="账号操作"><button id="login-tab" type="button" class="active" aria-pressed="true">登录</button><button id="register-tab" type="button" aria-pressed="false">注册账号</button></div>
+        <form id="auth-form">
+          <label for="username">用户名</label><input id="username" name="username" autocomplete="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_]{3,32}" placeholder="输入用户名" aria-describedby="username-help">
+          <p id="username-help" class="field-help">3–32 位英文字母、数字或下划线</p>
+          <label for="password">密码</label><input id="password" name="password" type="password" autocomplete="current-password" required placeholder="输入密码" aria-describedby="password-help">
+          <p id="password-help" class="field-help">密码需为 10–72 字节</p>
+          <button id="auth-submit" class="primary full" type="submit">登录</button>
+        </form>
+        <p class="auth-note">你的文件仅在登录后可查看和下载。</p>
+      </div>
+    </main>
+  </section>
+  <div id="app-view" class="app-layout" hidden>
+    <aside class="sidebar">
+      <a class="brand" href="/"><span class="brand-mark">N</span><span>冰岩网盘<small>NETDISK</small></span></a>
+      <p class="nav-label">我的空间</p><button id="home-button" class="nav-item active" type="button"><span aria-hidden="true">▤</span> 我的文件 <span id="side-count" class="count">0</span></button>
+      <div class="sidebar-bottom"><span class="status-dot"></span> 仅本人可访问<p>安心存放，轻松整理。</p></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><span class="topbar-title">个人文件空间</span><div class="account"><span class="avatar" aria-hidden="true">我</span><span id="current-user"></span><button id="logout-button" class="quiet" type="button">退出登录</button></div></header>
+      <main class="main-content">
+        <div class="page-heading"><div><span class="eyebrow">文件管理</span><h1 id="directory-title">我的文件</h1><p id="file-summary" class="muted">正在读取文件…</p></div><div class="heading-actions"><button id="new-folder-button" class="secondary" type="button">新建文件夹</button><button id="refresh-button" class="secondary" type="button">刷新列表</button></div></div>
+        <nav class="directory-nav" aria-label="目录导航"><button id="up-button" class="quiet" type="button">返回上级</button><div id="breadcrumbs"></div></nav>
+        <section class="upload-card" aria-labelledby="upload-title">
+          <div class="upload-symbol" aria-hidden="true">↑</div><div class="upload-copy"><h2 id="upload-title">上传一份新文件</h2><p id="upload-limit" class="muted">选择文件后开始上传，保留原始内容。</p></div>
+          <form id="upload-form"><label class="sr-only" for="upload-input">选择上传文件</label><input id="upload-input" type="file" required><button id="upload-button" class="primary" type="submit" disabled>开始上传</button></form>
+          <p id="upload-status" class="upload-status" aria-live="polite" hidden></p>
+        </section>
+        <section class="file-panel" aria-labelledby="list-title">
+          <div class="panel-heading"><h2 id="list-title">当前目录</h2><span class="muted">文件夹优先 · 文件按上传时间排列</span></div>
+          <div id="empty-state" class="empty-state" hidden><div class="empty-icon" aria-hidden="true">▤</div><h3>还没有文件</h3><p>上传第一份文件，开始整理你的空间。</p></div>
+          <div class="table-wrap"><table id="file-table"><thead><tr><th scope="col">文件名称</th><th scope="col">大小</th><th scope="col">上传时间</th><th scope="col" class="actions-title">操作</th></tr></thead><tbody id="file-rows"></tbody></table></div>
+        </section>
+        <p class="page-foot">文件由你掌握 · 下载与管理均需登录</p>
+      </main>
+    </div>
+  </div>
+  <dialog id="action-dialog" aria-labelledby="dialog-title"><form id="action-form"><h2 id="dialog-title"></h2><p id="dialog-description" class="muted"></p><p id="dialog-error" role="alert" hidden></p><label id="name-label" for="new-name">新名称</label><input id="new-name" maxlength="255" autocomplete="off"><label id="target-label" for="move-target" hidden>目标目录</label><select id="move-target" hidden></select><div class="dialog-actions"><button id="dialog-cancel" class="secondary" type="button">取消</button><button id="dialog-submit" class="primary" type="submit">保存</button></div></form></dialog>
+  <noscript>请启用 JavaScript 以使用文件管理功能。</noscript>
+</body>
+</html>

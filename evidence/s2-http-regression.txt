@@ -1,0 +1,55 @@
+PASS register A (201)
+PASS register B (201)
+PASS login A (200)
+PASS login B (200)
+PASS wrong password rejected (401)
+PASS current user (200)
+PASS local HTTP session cookie usable and HttpOnly
+PASS session token absent from JSON
+PASS upload binary file (201)
+PASS uploaded size
+PASS list A files (200)
+PASS list metadata and protected link
+PASS B list excludes A files
+PASS B isolation metadata (404)
+PASS B isolation download (404)
+PASS B isolation rename (404)
+PASS B isolation delete (404)
+PASS anonymous denied metadata (401)
+PASS anonymous denied download (401)
+PASS anonymous denied rename (401)
+PASS anonymous denied delete (401)
+PASS anonymous list denied (401)
+PASS anonymous current user denied (401)
+PASS anonymous upload denied (401)
+PASS missing CSRF header rejected (403)
+PASS foreign Origin rejected (403)
+PASS malicious upload name rejected (400)
+PASS malicious upload name rejected (400)
+PASS malicious upload name rejected (400)
+PASS malicious upload name rejected (400)
+PASS malicious rename rejected (400)
+PASS download original (200)
+PASS uploaded/downloaded SHA256 equal
+PASS safe download headers
+SHA256 7bf67b820b6dcfbd65f0f0af4ba0d20c5568abbc8e295cb21d30c16555ce2e15
+PASS rename (200)
+PASS renamed metadata
+PASS rename preserves bytes
+PASS interrupted upload not published
+ Container bingyan-netdisk-app Restarting
+ Container bingyan-netdisk-app Started
+PASS Linux container actually restarted
+PASS session persists through restart (200)
+PASS account persists through restart (200)
+PASS file persists through restart (200)
+PASS restart preserves SHA256
+PASS rename persists through restart
+PASS delete owned file (204)
+PASS deleted download denied (404)
+PASS deleted file absent from list
+PASS logout (204)
+PASS logged-out client rejected (401)
+PASS replayed old session rejected by server (401)
+PASS logout B (204)
+ACCEPTANCE PASS: 51 checks; only generated test accounts/files used.

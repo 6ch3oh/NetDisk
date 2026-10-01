@@ -1,0 +1,22 @@
+time="2026-10-01T20:03:09+08:00" level=warning msg="volume \"bingyan-netdisk-gomod\" already exists but was not created by Docker Compose. Use `external: true` to use an existing volume"
+time="2026-10-01T20:03:09+08:00" level=warning msg="volume \"bingyan-netdisk-gocache\" already exists but was not created by Docker Compose. Use `external: true` to use an existing volume"
+ Container bingyan-netdisk-tools-run-b08c37d37ce6 Creating
+ Container bingyan-netdisk-tools-run-b08c37d37ce6 Created
+?   	bingyan-netdisk/cmd/netdisk	[no test files]
+=== RUN   TestAccountSessionLifecycle
+--- PASS: TestAccountSessionLifecycle (0.05s)
+=== RUN   TestFileLifecycleAndOwnership
+--- PASS: TestFileLifecycleAndOwnership (0.05s)
+=== RUN   TestCSRFAndInvalidInput
+--- PASS: TestCSRFAndInvalidInput (0.03s)
+=== RUN   TestStreamingLimitsAndAbortCleanup
+    app_test.go:301: stream proof: 3145728 bytes, maximum reader buffer 32768 bytes, temp file observed before EOF
+--- PASS: TestStreamingLimitsAndAbortCleanup (0.04s)
+=== RUN   TestRestartPersistenceAndPendingDeletionRecovery
+--- PASS: TestRestartPersistenceAndPendingDeletionRecovery (0.03s)
+=== RUN   TestCookieOriginConfiguration
+--- PASS: TestCookieOriginConfiguration (0.03s)
+=== RUN   TestBundledWebAndPolicyIsolation
+--- PASS: TestBundledWebAndPolicyIsolation (0.02s)
+PASS
+ok  	bingyan-netdisk/internal/netdisk	0.245s

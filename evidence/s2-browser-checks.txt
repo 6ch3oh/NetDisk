@@ -1,0 +1,27 @@
+TASK=BINGYAN-NETDISK-S2-DEMO-AND-FOLDERS-001
+DATE=2026-10-01 Asia/Shanghai
+TOOL=existing agent-browser CLI, isolated session bingyan-netdisk-s2
+ORIGIN=http://127.0.0.1:38120
+GENERATED_ACCOUNT=s2_a_1aaa9c5dd3ee
+REGISTER=PASS (UI notice: 注册成功)
+LOGIN=PASS (UI notice: 登录成功; current username displayed)
+EMPTY_LIST=PASS
+UPLOAD=PASS (browser-proof.txt, 50 bytes, actual API response reflected in list)
+RENAME=PASS (HTML-like name rendered literally; then renamed to browser-renamed.txt)
+SAFE_TEXT=PASS (document.querySelectorAll('#file-rows img').length returned 0)
+DOWNLOAD=FAILED (agent-browser download returned 'Download was canceled'; no saved file)
+DOWNLOAD_DIAGNOSIS=UNKNOWN; ordinary and HTML-like names both canceled
+BOUNDED_CORRECTION=one attempt adding sandbox allow-downloads did not resolve; reverted
+DELETE_CANCEL=PASS (file still listed after cancel)
+DELETE_CONFIRM=PASS (explicit modal, then 文件已删除 and empty list)
+LOGOUT=PASS (second tab: 已安全退出登录)
+SESSION_EXPIRED=PASS (original tab refresh: 登录已过期，请重新登录。)
+WEB_STORAGE=PASS (localStorageKeys=[]; sessionStorageKeys=[])
+VISUAL_REVIEW=desktop login, files, delete dialog and 390x844 mobile login screenshots inspected
+MOBILE_FILE_INTERACTION=NOT_RUN
+SLOW_UPLOAD_SCREENSHOT=NOT_RUN (waiting state and duplicate-submit guards implemented)
+FOLDERS=NOT_STARTED because A download loop was not fully verified
+DATABASE_MIGRATION=NOT_PERFORMED
+SCREENSHOTS=s2-a-login.png,s2-a-files.png,s2-a-delete-confirm.png,s2-a-empty.png,s2-a-expired.png,s2-a-mobile.png
+PASSWORDS_AND_SESSION_TOKENS=not captured in evidence
+FINAL_RESULT=PARTIAL; do not treat HTTP 200 or API hash success as browser download acceptance

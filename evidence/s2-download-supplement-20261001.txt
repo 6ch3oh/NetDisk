@@ -1,0 +1,58 @@
+TASK=BINGYAN-NETDISK-S2-DOWNLOAD-SUPPLEMENT-001
+VERIFIED_AT=2026-10-01 20:14:37 +08:00
+VERIFIER=ChatGPT via AgentDock; isolated agent-browser sessions
+PROJECT_PATH=E:\冰岩实习\NetDisk
+AGENT_BROWSER_VERSION=0.33.1 (actual CLI output)
+BUSINESS_SOURCE_CHANGES=0
+DATABASE_SCHEMA_CHANGES=0
+SECURITY_POLICY_CHANGES=0
+GLOBAL_CONFIGURATION_CHANGES=0
+
+READ_EVIDENCE=AGENTS.md,README.md,DEVLOG.md,evidence/s2-browser-checks.txt,internal/netdisk/web/app.js,related app.go/web.go slices
+HEALTH_PRECHECK={"status":"ok"}
+
+CONTROL_A=about:blank; synthetic data:text/plain link; no NetDisk API, database, authentication, or CSP involved
+CONTROL_A_TRIGGER=agent-browser download #download-probe <project-private-path>/control-a.txt
+CONTROL_A_RESULT=FAILED; exact error: Download was canceled
+CONTROL_B=Fresh isolated browser session, same synthetic text/link; launch with --download-path pointing at project .tmp directory; use ordinary agent-browser click, not its download helper
+CONTROL_B_RESULT=PASS; actual browser saved browser-probe.txt
+CONTROL_B_BYTES=22
+CONTROL_B_SHA256=1979bf29914076c04bcf717648aab4cc4bef99c79bd747a9d0e5a2fb60d9201f
+CONTROL_B_EXPECTED_SHA256=1979bf29914076c04bcf717648aab4cc4bef99c79bd747a9d0e5a2fb60d9201f
+CONTROL_B_PATH=E:\冰岩实习\NetDisk\.tmp\download-probe-20261001-2011\browser-probe.txt
+CONTROL_CAVEAT=An earlier setup did not create its locator because the command session timed out; immediate reuse of a closed control session also failed with connection refused. Neither was treated as a download result. The successful B test used a fresh isolated session.
+
+REAL_APPLICATION_TEST=Unmodified running NetDisk at http://127.0.0.1:38120/
+TEST_IDENTITY=New synthetic account only; no real user account used; password generated in memory and not captured
+REAL_UI_FLOW=Click register tab, fill/register, fill/login, select local fixture through upload input, click upload, wait for actual file row, click the existing first download button
+DOWNLOAD_TRIGGER=Ordinary browser click on #file-rows button:first-child with an explicit project-private download directory
+DOWNLOAD_IMPLEMENTATION=Existing webpage HEAD request and anchor download logic unchanged
+HTTP_CLIENT_DOWNLOAD_USED_FOR_ACCEPTANCE=NO
+BLOB_OR_FETCH_REPLACEMENT_FOR_APPLICATION_DOWNLOAD=NO
+SOURCE_PATH=E:\冰岩实习\NetDisk\.tmp\download-probe-20261001-2011\source\netdisk-proof-eb3281c860.bin
+SAVED_PATH=E:\冰岩实习\NetDisk\.tmp\download-probe-20261001-2011\netdisk-download\netdisk-proof-eb3281c860.bin
+SOURCE_SHA256=8251010387eac967bb534ee30b87b204ef282d70dba78f7bd97e2ec0183c4b12
+SAVED_SHA256=8251010387eac967bb534ee30b87b204ef282d70dba78f7bd97e2ec0183c4b12
+SAVED_BYTES=1048576
+HASH_MATCH=YES
+REAL_BROWSER_DOWNLOAD=PASS
+TEST_UPLOAD_CLEANUP=Deleted only the synthetic uploaded file through the existing UI confirmation dialog
+TEST_LOGOUT=PASS; UI confirmed successful logout
+REAL_TEST_BROWSER_CLOSED=YES
+SYNTHETIC_ACCOUNT=Remains as permitted test data; account deletion is not implemented
+SOURCE_AND_DOWNLOADED_FIXTURES=Retained under Git-ignored .tmp; do not add binary fixtures to Git
+
+CONCLUSION=The previously failed agent-browser download helper also fails on an independent blank-page control. Normal browser click saves both the control and the real NetDisk file. The NetDisk browser download loop has now passed without changing application code, authentication, or CSP.
+ROOT_CAUSE_BOUNDARY=Helper-specific failure is demonstrated. The exact low-level mechanism is not isolated; do not claim a proved Windows path-prefix bug.
+SOURCE_RESEARCH=The v0.33.1 helper canonicalizes download_dir then passes it to Browser.setDownloadBehavior. Rust documents that canonicalize uses extended-length Windows paths with potential interoperability limitations. This is a plausible explanation, not a proved sole cause.
+SOURCE_1=https://raw.githubusercontent.com/vercel-labs/agent-browser/v0.33.1/cli/src/native/actions.rs (handle_download, approximately lines 5790-5835)
+SOURCE_2=https://raw.githubusercontent.com/vercel-labs/agent-browser/v0.33.1/cli/src/native/browser.rs (launch downloadPath handling and set_download_behavior)
+SOURCE_3=https://doc.rust-lang.org/std/fs/fn.canonicalize.html
+SOURCE_4=https://agent-browser.dev/commands
+
+GO_CHECKS=NOT_RERUN; business source unchanged; previous S2 7 test groups/go vet evidence remains historical
+S1_HTTP_REGRESSION=NOT_RERUN; previous S2 51 assertions remain historical, not presented as this task's new execution
+FOLDERS=NOT_STARTED
+GIT_COMMIT_OR_PUSH=NOT_PERFORMED
+GIT_STATUS_PRECHECK=Ownership check rejected read-only git status under AgentDock user; no safe.directory/global Git changes made
+FOLLOWUP=Append this supplemental result to existing README/TASKS/DEVLOG without rewriting prior failure history. Do not remove CSP or change application download code to work around the helper. Reuse explicit --download-path plus normal browser click for later browser download acceptance.
