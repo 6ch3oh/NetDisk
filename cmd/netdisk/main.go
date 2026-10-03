@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,15 +31,48 @@ func main() {
 	if err != nil {
 		log.Fatal("invalid cookie security setting")
 	}
+	var s3 *netdisk.S3Config
+	if endpoint := os.Getenv("NETDISK_S3_ENDPOINT"); endpoint != "" {
+		tls, e := strconv.ParseBool(env("NETDISK_S3_SECURE", "false"))
+		if e != nil {
+			log.Fatal("invalid object storage TLS setting")
+		}
+		s3 = &netdisk.S3Config{Endpoint: endpoint, DownloadEndpoint: os.Getenv("NETDISK_S3_DOWNLOAD_ENDPOINT"), Bucket: os.Getenv("NETDISK_S3_BUCKET"), AccessKey: os.Getenv("NETDISK_S3_ACCESS_KEY"), SecretKey: os.Getenv("NETDISK_S3_SECRET_KEY"), Secure: tls}
+	}
+	quota, err := strconv.ParseInt(env("NETDISK_QUOTA_BYTES", "1073741824"), 10, 64)
+	if err != nil || quota <= 0 {
+		log.Fatal("invalid quota")
+	}
+	devEmail, err := strconv.ParseBool(env("NETDISK_DEV_EMAIL", "false"))
+	if err != nil {
+		log.Fatal("invalid email mode")
+	}
 	app, err := netdisk.New(netdisk.Config{
 		DataDir:        env("NETDISK_DATA_DIR", "./data"),
 		Origin:         env("NETDISK_ORIGIN", "http://127.0.0.1:38120"),
-		MaxUploadBytes: limit, CookieSecure: secure,
+		MaxUploadBytes: limit, CookieSecure: secure, S3: s3, MaintenanceKey: os.Getenv("NETDISK_MAINTENANCE_KEY"), QuotaBytes: quota, DevEmail: devEmail,
 	})
 	if err != nil {
 		log.Fatal("could not initialize storage: ", err)
 	}
 	defer app.Close()
+	if addr := os.Getenv("NETDISK_NFS_ADDR"); addr != "" {
+		host, _, e := net.SplitHostPort(addr)
+		ip := net.ParseIP(host)
+		if e != nil || ip == nil || !(ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified()) {
+			log.Fatal("NFS listener requires a local/private IP; publish Docker ports on loopback only")
+		}
+		listener, e := net.Listen("tcp", addr)
+		if e != nil {
+			log.Fatal("NFS listener unavailable")
+		}
+		defer listener.Close()
+		go func() {
+			if e := app.ServeNFS(listener); e != nil && !errors.Is(e, net.ErrClosed) {
+				log.Print("NFS listener stopped")
+			}
+		}()
+	}
 	server := &http.Server{Addr: env("NETDISK_ADDR", "127.0.0.1:38120"), Handler: app.Handler(),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Minute,
 		WriteTimeout: 30 * time.Minute, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}

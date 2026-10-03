@@ -187,6 +187,9 @@ func TestLegacyMigrationAndFolderRestart(t *testing.T) {
 	if !strings.Contains(d.Body.String(), ids[0]) || !strings.Contains(d.Body.String(), "persisted") {
 		t.Fatal("directory association/breadcrumbs lost on restart")
 	}
+	if countQuery(t, app, `SELECT count(*) FROM blobs`) != 1 || countQuery(t, app, `SELECT ref_count FROM blobs`) != 2 || entries(t, app.blobs) != 1 {
+		t.Fatal("legacy identical blobs not consolidated safely")
+	}
 	for _, id := range ids {
 		w := h.request("GET", "/api/files/"+id+"/download", "", "", c)
 		status(t, w, 200)

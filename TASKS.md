@@ -1,4 +1,19 @@
-# 当前交付任务：S3
+# 当前任务：Full Requirements 可见主线程
+
+- TASK：BINGYAN-NETDISK-FULL-REQUIREMENTS-VISIBLE-APP-001；BRANCH：feature/full-netdisk-task；用户已授权完整版本地提交。
+- 接管基线 f04850f 和未提交 Full A；重新测试，保留已有实现及原暂存内容。
+- A：核心回归、分享、资料/删除、dedupe、Range、分片、真实 MinIO、ZIP 针对性 PASS。
+- B：NFS 真实协议及隔离 Linux kernel mount PASS；P2P 两客户端 TLS 直传/hash/撤销 PASS。
+- 扩展：本地邮箱/密码、统计/预留配额、分享分析/事件清理、真实 MinIO 存储策略针对性 PASS。
+- 浏览器：最终编译版真实注册/登录、普通上传/下载、目录、分享匿名/撤销/统计、设置、ZIP、分片、邮箱、NFS 导出、密码修改/重新登录和合成账户删除 PASS；无 JS errors。
+- 最终统一 gofmt / go test ./... / go vet ./... / 构建 PASS，测试内同时启用真实 MinIO 与 kernel NFS mount；两个独立 CLI 进程直传 PASS；Windows 独立启动脚本实际运行 PASS，Linux 脚本语法 PASS、完整脚本执行 NOT_RUN。
+- RESULT：PASS（本轮实现和要求中的验收）；已清理本轮 demo 容器/新合成卷，保留接管前四个隔离容器；详细原始结果见 evidence/full-requirements-checks.txt。
+- 最新规则更新后的续接：工作树/索引/隔离挂载重新核查；Full A/核心 19 项和 B/扩展 7 项重新 PASS，含真实 MinIO、NFS RPC、P2P TLS；gofmt/go vet 再次 PASS。业务源码无新修改，既有全量/kernel mount/独立 CLI/浏览器验收仍适用，没有复现遗留失败。
+- 边界：单实例、NFSv3 不提供锁/ACL/传输加密，同名需先改名；P2P LAN/loopback，未实现 NAT 穿透；邮箱为明确本地演示模式；存储策略需显式维护授权。
+- LIVE_DATA_TOUCHED=NO；OPEN_CODE_CALLS=0；DEEPSEEK_CALLS=0；子 Agent=0；MODEL/API=UNKNOWN；无 commit/push/remote 修改。
+- 提交收尾授权：用户明确要求“提交完整版”。提交范围为已验收的完整 A/B/扩展、启动脚本、文档和脱敏证据，共 37 个白名单文件；原有测试结果对应同一业务源码。本次仅本地提交，不 push、不部署、不触碰 live 卷。上文无提交记录为授权前的验收状态。
+
+# S3 历史交付
 
 - TASK：BINGYAN-NETDISK-S3-DELIVERY-CLOSEOUT-001；RESULT：PASS（21:21:58 源码包验证通过）。
 - 当前业务冻结于 S2B；本轮仅文档、白名单审查、源码包和暂存收尾。

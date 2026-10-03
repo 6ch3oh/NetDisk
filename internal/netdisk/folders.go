@@ -113,21 +113,6 @@ func (a *App) migrateFolders() error {
 	}
 	return tx.Commit()
 }
-func (a *App) insertFile(ctx context.Context, owner int64, f File, key string) error {
-	tx, err := a.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if err = checkParent(ctx, tx, owner, f.FolderID); err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO files(id,user_id,name,storage_key,size,created_at,folder_id) VALUES(?,?,?,?,?,?,?)`, f.ID, owner, f.Name, key, f.Size, f.CreatedAt, nullableID(f.FolderID))
-	if err != nil {
-		return err
-	}
-	return tx.Commit()
-}
 func (a *App) folderRoutes(m *http.ServeMux) {
 	for pattern, handler := range map[string]http.HandlerFunc{
 		"GET /api/folders": a.allFolders, "GET /api/directory": a.directory, "GET /api/folders/{id}": a.folderMetadata,
@@ -357,7 +342,7 @@ func (a *App) deleteFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var count int
-	err = tx.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM folders WHERE parent_id=?)+(SELECT count(*) FROM files WHERE folder_id=?)`, f.ID, f.ID).Scan(&count)
+	err = tx.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM folders WHERE parent_id=?)+(SELECT count(*) FROM files WHERE folder_id=?)+(SELECT count(*) FROM upload_sessions WHERE folder_id=?)`, f.ID, f.ID, f.ID).Scan(&count)
 	if err != nil {
 		folderError(w, err)
 		return

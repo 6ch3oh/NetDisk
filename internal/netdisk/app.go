@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -18,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -37,7 +37,11 @@ type Config struct {
 	Origin         string
 	MaxUploadBytes int64
 	CookieSecure   bool
-	BcryptCost     int // Zero selects the production default (12).
+	S3             *S3Config
+	MaintenanceKey string
+	QuotaBytes     int64 // Zero selects 1 GiB per user; logical bytes, including reservations.
+	DevEmail       bool  // Explicit local-only code adapter; never enabled by default.
+	BcryptCost     int   // Zero selects the production default (12).
 }
 type App struct {
 	db        *sql.DB
@@ -45,10 +49,17 @@ type App struct {
 	blobs     string
 	temp      string
 	dummyHash []byte
+	mu        sync.Mutex
+	stop      chan struct{}
+	done      chan struct{}
+	closeOnce sync.Once
+	store     *objectStore
 }
 type User struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username"`
+	ID          int64  `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+	Email       string `json:"email"`
 }
 type File struct {
 	ID          string `json:"id"`
@@ -83,6 +94,12 @@ func New(cfg Config) (*App, error) {
 	}
 	if cfg.BcryptCost == 0 {
 		cfg.BcryptCost = 12
+	}
+	if cfg.QuotaBytes == 0 {
+		cfg.QuotaBytes = 1 << 30
+	}
+	if cfg.QuotaBytes < 0 {
+		return nil, errors.New("quota must be positive")
 	}
 	abs, err := filepath.Abs(cfg.DataDir)
 	if err != nil {
@@ -124,6 +141,21 @@ CREATE INDEX IF NOT EXISTS files_owner ON files(user_id,deleted);`)
 		a.db.Close()
 		return nil, err
 	}
+	if err = a.migrateAdvanced(); err != nil {
+		a.db.Close()
+		return nil, err
+	}
+	if err = a.migrateExtensions(); err != nil {
+		a.db.Close()
+		return nil, err
+	}
+	if cfg.S3 != nil {
+		a.store, err = newObjectStore(*cfg.S3)
+		if err != nil {
+			a.db.Close()
+			return nil, err
+		}
+	}
 	a.dummyHash, err = bcrypt.GenerateFromPassword([]byte("invalid-account-placeholder"), cfg.BcryptCost)
 	if err == nil {
 		err = a.recoverDeletes()
@@ -132,13 +164,22 @@ CREATE INDEX IF NOT EXISTS files_owner ON files(user_id,deleted);`)
 		a.db.Close()
 		return nil, err
 	}
+	if err = a.cleanupLocked(time.Now()); err != nil {
+		a.db.Close()
+		return nil, err
+	}
+	a.startCleanup()
 	return a, nil
 }
-func (a *App) Close() error { return a.db.Close() }
+func (a *App) Close() error { a.closeOnce.Do(func() { close(a.stop); <-a.done }); return a.db.Close() }
 func (a *App) Handler() http.Handler {
 	m := http.NewServeMux()
 	a.webRoutes(m)
 	a.folderRoutes(m)
+	a.advancedRoutes(m)
+	a.extensionRoutes(m)
+	a.nfsRoutes(m)
+	a.p2pRoutes(m)
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.db.PingContext(r.Context()); err != nil {
 			fail(w, 503, "unavailable")
@@ -158,6 +199,7 @@ func (a *App) Handler() http.Handler {
 	m.Handle("DELETE /api/files/{id}", a.auth(http.HandlerFunc(a.delete)))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 		// A mandatory non-simple header forces cross-origin browsers to preflight.
@@ -168,6 +210,13 @@ func (a *App) Handler() http.Handler {
 				return
 			}
 		}
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		defer func() {
+			if r.Method != "GET" && r.Method != "HEAD" {
+				_ = a.cleanupKeys(context.Background(), "temp_cleanup", a.temp)
+			}
+		}()
 		m.ServeHTTP(w, r)
 	})
 }
@@ -223,7 +272,7 @@ func (a *App) auth(next http.Handler) http.Handler {
 			return
 		}
 		i := identity{sessionHash: tokenHash(c.Value)}
-		err = a.db.QueryRowContext(r.Context(), `SELECT u.id,u.username FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, i.sessionHash, time.Now().Unix()).Scan(&i.user.ID, &i.user.Username)
+		err = a.db.QueryRowContext(r.Context(), `SELECT u.id,u.username,u.display_name,u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, i.sessionHash, time.Now().Unix()).Scan(&i.user.ID, &i.user.Username, &i.user.DisplayName, &i.user.Email)
 		if errors.Is(err, sql.ErrNoRows) {
 			fail(w, 401, "authentication required")
 			return
@@ -237,8 +286,9 @@ func (a *App) auth(next http.Handler) http.Handler {
 }
 
 type credentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+	Password    string `json:"password"`
 }
 
 func (a *App) register(w http.ResponseWriter, r *http.Request) {
@@ -267,7 +317,7 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, _ := res.LastInsertId()
-	respond(w, 201, User{id, c.Username})
+	respond(w, 201, User{ID: id, Username: c.Username})
 }
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	var c credentials
@@ -277,7 +327,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	c.Username = strings.ToLower(strings.TrimSpace(c.Username))
 	var u User
 	var hash string
-	err := a.db.QueryRowContext(r.Context(), `SELECT id,username,password_hash FROM users WHERE username=?`, c.Username).Scan(&u.ID, &u.Username, &hash)
+	err := a.db.QueryRowContext(r.Context(), `SELECT id,username,password_hash,display_name,email FROM users WHERE username=?`, c.Username).Scan(&u.ID, &u.Username, &hash, &u.DisplayName, &u.Email)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		fail(w, 500, "storage unavailable")
 		return
@@ -350,7 +400,7 @@ func (a *App) owned(r *http.Request) (File, string, error) {
 	if !keyPattern.MatchString(r.PathValue("id")) {
 		return f, key, sql.ErrNoRows
 	}
-	err := a.db.QueryRowContext(r.Context(), `SELECT id,name,size,created_at,storage_key,COALESCE(folder_id,'') FROM files WHERE id=? AND user_id=? AND deleted=0`, r.PathValue("id"), current(r).user.ID).Scan(&f.ID, &f.Name, &f.Size, &f.CreatedAt, &key, &f.FolderID)
+	err := a.db.QueryRowContext(r.Context(), `SELECT f.id,f.name,f.size,f.created_at,b.storage_key,COALESCE(f.folder_id,'') FROM files f JOIN blobs b ON f.blob_id=b.id WHERE f.id=? AND f.user_id=? AND f.deleted=0`, r.PathValue("id"), current(r).user.ID).Scan(&f.ID, &f.Name, &f.Size, &f.CreatedAt, &key, &f.FolderID)
 	link(&f)
 	if err == nil && !keyPattern.MatchString(key) {
 		err = errors.New("invalid stored key")
@@ -424,7 +474,8 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 	defer func() { tmp.Close(); os.Remove(tmp.Name()) }()
 	// The body is never ReadAll'd or parsed into a multipart form. Memory is bounded
 	// by this 32 KiB buffer, independent of the upload's total size.
-	size, err := io.CopyBuffer(tmp, r.Body, make([]byte, 32*1024))
+	hash := sha256.New()
+	size, err := io.CopyBuffer(io.MultiWriter(tmp, hash), r.Body, make([]byte, 32*1024))
 	if err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
@@ -442,51 +493,23 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "storage unavailable")
 		return
 	}
-	id, err := randomKey(16)
+	f, err := a.publish(r.Context(), current(r).user.ID, name, folderID, size, hex.EncodeToString(hash.Sum(nil)), tmp.Name())
 	if err != nil {
-		fail(w, 500, "storage unavailable")
-		return
-	}
-	key, err := randomKey(16)
-	if err != nil {
-		fail(w, 500, "storage unavailable")
-		return
-	}
-	path := filepath.Join(a.blobs, key)
-	if err = os.Rename(tmp.Name(), path); err != nil {
-		fail(w, 500, "storage unavailable")
-		return
-	}
-	f := File{ID: id, Name: name, Size: size, CreatedAt: time.Now().Unix(), FolderID: folderID}
-	link(&f)
-	err = a.insertFile(r.Context(), current(r).user.ID, f, key)
-	if err != nil {
-		os.Remove(path)
 		folderError(w, err)
 		return
 	}
 	respond(w, 201, f)
 }
+
 func (a *App) download(w http.ResponseWriter, r *http.Request) {
 	f, key, err := a.owned(r)
 	if err != nil {
 		fileError(w, err)
 		return
 	}
-	blob, err := os.Open(filepath.Join(a.blobs, key))
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			fail(w, 404, "file not found")
-		} else {
-			fail(w, 500, "storage unavailable")
-		}
-		return
-	}
-	defer blob.Close()
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": f.Name}))
-	http.ServeContent(w, r, f.Name, time.Unix(f.CreatedAt, 0), blob)
+	a.serveBlob(w, r, f, key)
 }
+
 func (a *App) rename(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name string `json:"name"`
@@ -541,38 +564,41 @@ func (a *App) delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 func (a *App) finishDelete(id, key string) error {
-	if !keyPattern.MatchString(key) {
-		return errors.New("invalid stored key")
-	}
-	if err := os.Remove(filepath.Join(a.blobs, key)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	_, err := a.db.Exec(`DELETE FROM files WHERE id=? AND deleted=1`, id)
-	return err
-}
-func (a *App) recoverDeletes() error {
-	rows, err := a.db.Query(`SELECT id,storage_key FROM files WHERE deleted=1`)
+	tx, err := a.db.Begin()
 	if err != nil {
 		return err
 	}
-	type pending struct{ id, key string }
-	var items []pending
+	defer tx.Rollback()
+	if err = releaseFile(tx, id); err != nil {
+		return err
+	}
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	return a.gcBlobs(context.Background())
+}
+func (a *App) recoverDeletes() error {
+	rows, err := a.db.Query(`SELECT id FROM files WHERE deleted=1`)
+	if err != nil {
+		return err
+	}
+	var ids []string
 	for rows.Next() {
-		var p pending
-		if err = rows.Scan(&p.id, &p.key); err != nil {
+		var id string
+		if err = rows.Scan(&id); err != nil {
 			rows.Close()
 			return err
 		}
-		items = append(items, p)
+		ids = append(ids, id)
 	}
 	err = rows.Err()
 	rows.Close()
 	if err != nil {
 		return err
 	}
-	for _, p := range items {
-		if err = a.finishDelete(p.id, p.key); err != nil {
-			return fmt.Errorf("recover pending deletion: %w", err)
+	for _, id := range ids {
+		if err = a.finishDelete(id, ""); err != nil {
+			return err
 		}
 	}
 	return nil

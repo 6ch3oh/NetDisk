@@ -11,7 +11,7 @@
     <div class="auth-story">
       <a class="brand" href="/" aria-label="冰岩网盘首页"><span class="brand-mark">N</span><span>冰岩网盘<small>NETDISK</small></span></a>
       <div class="story-copy"><span class="eyebrow">你的日常文件空间</span><h1>文件有序，<br>随时取用。</h1><p>从第一份文件开始。<br>上传、整理与下载，都在这里完成。</p></div>
-      <div class="story-foot"><span class="status-dot"></span> 个人文件 · 仅本人可访问</div>
+      <div class="story-foot"><span class="status-dot"></span> 个人文件 · 按需创建分享</div>
     </div>
     <main class="auth-panel">
       <div class="auth-card">
@@ -35,25 +35,37 @@
       <div class="sidebar-bottom"><span class="status-dot"></span> 仅本人可访问<p>安心存放，轻松整理。</p></div>
     </aside>
     <div class="workspace">
-      <header class="topbar"><span class="topbar-title">个人文件空间</span><div class="account"><span class="avatar" aria-hidden="true">我</span><span id="current-user"></span><button id="logout-button" class="quiet" type="button">退出登录</button></div></header>
+      <header class="topbar"><span class="topbar-title">个人文件空间</span><div class="account"><span class="avatar" aria-hidden="true">我</span><span id="current-user"></span><button id="profile-button" class="quiet" type="button">账号设置</button><button id="shares-button" class="quiet" type="button">我的分享</button><button id="logout-button" class="quiet" type="button">退出登录</button></div></header>
       <main class="main-content">
         <div class="page-heading"><div><span class="eyebrow">文件管理</span><h1 id="directory-title">我的文件</h1><p id="file-summary" class="muted">正在读取文件…</p></div><div class="heading-actions"><button id="new-folder-button" class="secondary" type="button">新建文件夹</button><button id="refresh-button" class="secondary" type="button">刷新列表</button></div></div>
         <nav class="directory-nav" aria-label="目录导航"><button id="up-button" class="quiet" type="button">返回上级</button><div id="breadcrumbs"></div></nav>
+        <p id="quota-summary" class="muted" role="status"></p>
         <section class="upload-card" aria-labelledby="upload-title">
           <div class="upload-symbol" aria-hidden="true">↑</div><div class="upload-copy"><h2 id="upload-title">上传一份新文件</h2><p id="upload-limit" class="muted">选择文件后开始上传，保留原始内容。</p></div>
           <form id="upload-form"><label class="sr-only" for="upload-input">选择上传文件</label><input id="upload-input" type="file" required><button id="upload-button" class="primary" type="submit" disabled>开始上传</button></form>
           <p id="upload-status" class="upload-status" aria-live="polite" hidden></p>
         </section>
+        <section class="upload-card" aria-labelledby="resume-title"><div class="upload-copy"><h2 id="resume-title">分片上传 / 恢复</h2><p class="muted">先在上方选择文件。保留会话 ID，刷新后选回同一文件继续；会话有效期 24 小时。</p><label for="resume-id">上传会话 ID（新建时留空）</label><input id="resume-id" maxlength="32" autocomplete="off"><button id="resume-button" class="secondary" type="button">分片上传 / 继续</button><button id="cancel-upload-button" class="quiet" type="button">取消会话</button><p id="resume-status" role="status"></p></div></section>
         <section class="file-panel" aria-labelledby="list-title">
           <div class="panel-heading"><h2 id="list-title">当前目录</h2><span class="muted">文件夹优先 · 文件按上传时间排列</span></div>
           <div id="empty-state" class="empty-state" hidden><div class="empty-icon" aria-hidden="true">▤</div><h3>还没有文件</h3><p>上传第一份文件，开始整理你的空间。</p></div>
           <div class="table-wrap"><table id="file-table"><thead><tr><th scope="col">文件名称</th><th scope="col">大小</th><th scope="col">上传时间</th><th scope="col" class="actions-title">操作</th></tr></thead><tbody id="file-rows"></tbody></table></div>
         </section>
-        <p class="page-foot">文件由你掌握 · 下载与管理均需登录</p>
+        <p class="page-foot">文件由你掌握 · 分享链接仅访问授权范围</p>
       </main>
     </div>
   </div>
   <dialog id="action-dialog" aria-labelledby="dialog-title"><form id="action-form"><h2 id="dialog-title"></h2><p id="dialog-description" class="muted"></p><p id="dialog-error" role="alert" hidden></p><label id="name-label" for="new-name">新名称</label><input id="new-name" maxlength="255" autocomplete="off"><label id="target-label" for="move-target" hidden>目标目录</label><select id="move-target" hidden></select><div class="dialog-actions"><button id="dialog-cancel" class="secondary" type="button">取消</button><button id="dialog-submit" class="primary" type="submit">保存</button></div></form></dialog>
+  <dialog id="profile-dialog" aria-labelledby="profile-title">
+    <button id="profile-close" class="secondary account-dialog-close" type="button">关闭</button><p id="profile-feedback" role="status" hidden></p>
+    <form id="profile-form"><h2 id="profile-title">账号设置</h2><p class="muted">用户名用于登录，显示名称用于展示。</p><label for="display-name">显示名称</label><input id="display-name" maxlength="80" autocomplete="nickname"><div class="dialog-actions"><button class="primary" type="submit">保存显示名称</button></div></form>
+    <form id="email-form"><h3>绑定邮箱</h3><p id="email-mode" class="muted"></p><label for="email-address">邮箱地址</label><input id="email-address" type="email" required autocomplete="email"><button id="email-code-button" class="secondary" type="button">获取验证码</button><p id="email-delivery" role="status"></p><label for="email-code">验证码</label><input id="email-code" required minlength="6" maxlength="6" autocomplete="one-time-code"><button class="primary" type="submit">绑定邮箱</button></form>
+    <form id="password-form"><h3>修改密码</h3><p class="muted">修改后所有登录会话和 NFS 导出将失效。</p><label for="old-password">当前密码</label><input id="old-password" type="password" required autocomplete="current-password"><label for="new-password">新密码</label><input id="new-password" type="password" required minlength="10" maxlength="72" autocomplete="new-password"><button class="primary" type="submit">修改密码</button></form>
+    <section><h3>目录挂载</h3><p class="muted">创建有效期 24 小时的 NFS 导出，可在本地 Linux 客户端使用。妥善保管导出路径。</p><button id="nfs-create" class="secondary" type="button">创建 NFS 导出</button><label for="nfs-path">刚创建的导出路径</label><input id="nfs-path" readonly><div id="nfs-list"></div></section>
+    <section><h3>存储建议</h3><p class="muted">超过 7 天未访问的大文件可由维护者迁移到对象存储。</p><div id="storage-candidates"></div></section>
+    <div class="dialog-actions"><button id="delete-account-button" class="danger" type="button">删除账号</button></div>
+  </dialog>
+  <dialog id="shares-dialog"><h2>我的分享</h2><p class="muted">新分享链接只在创建时显示，请及时复制。撤销后链接立即失效。文件夹链接返回目录 API，可按 folder_id 导航。</p><p id="share-feedback" role="status" hidden></p><label for="share-url">刚创建的分享链接</label><input id="share-url" readonly><button id="copy-share-button" class="secondary" type="button">复制链接</button><div id="share-list"></div><button id="shares-close" class="secondary" type="button">关闭</button></dialog>
   <noscript>请启用 JavaScript 以使用文件管理功能。</noscript>
 </body>
 </html>

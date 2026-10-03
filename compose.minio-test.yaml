@@ -1,0 +1,38 @@
+name: bingyan-netdisk-full-a-test
+services:
+  minio:
+    image: golang:1.27.0
+    pull_policy: never
+    profiles: [minio-test]
+    container_name: bingyan-netdisk-full-a-minio-test
+    command: [/minio-server/minio, server, /data, --quiet]
+    volumes:
+      - ./.tmp/full-a/minio-bin:/minio-server:ro
+    environment:
+      # Local disposable integration credentials, never cloud credentials.
+      MINIO_ROOT_USER: netdisk-test-only
+      MINIO_ROOT_PASSWORD: netdisk-test-only-password
+    ports:
+      - "127.0.0.1:38121:9000"
+    tmpfs:
+      - /data:rw,size=256m
+    restart: "no"
+  tools:
+    image: golang:1.27.0
+    pull_policy: never
+    profiles: [minio-test]
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - gomod:/go/pkg/mod
+      - gocache:/root/.cache/go-build
+    environment:
+      NETDISK_TEST_MINIO_ENDPOINT: minio:9000
+    command: [go, test, -count=1, -v, -run, TestMinIO, ./internal/netdisk]
+volumes:
+  gomod:
+    external: true
+    name: bingyan-netdisk-gomod
+  gocache:
+    external: true
+    name: bingyan-netdisk-gocache

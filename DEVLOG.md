@@ -1,5 +1,49 @@
 # 开发记录
 
+## 2026-10-03：Full Requirements 可见主线程
+
+TASK=`BINGYAN-NETDISK-FULL-REQUIREMENTS-VISIBLE-APP-001`，分支 `feature/full-netdisk-task`，HEAD/main/origin main 均为 `f04850f`。接管未提交的 Full A 改动，先读取 git status/diff 与隔离资源挂载，再重新执行针对性测试；没有 reset、重写既有高级功能、暂存、提交、推送或修改 remote。当前线程直接完成，没有后台 Codex CLI、OpenCode、DeepSeek、子 Agent 或持续 goal；精确模型 ID/API 数 UNKNOWN。
+
+宿主 Go 不可用，使用已有 `golang:1.27.0` 和 tools。默认执行沙箱初始化失败，改为逐条审核的限定项目命令；Git ownership 检查以单次 `-c safe.directory=E:/冰岩实习/NetDisk` 解决，没有改全局配置。后续只读 Git 使用 `--no-optional-locks`；暂存 diff 始终为空。中途 VCS/stat cache 查询期间 index 指纹曾不同，未运行任何 add/reset/暂存操作；最终 index SHA-256 与接管时完全一致：`a4f628276d6df0adfd0eca0b6e7a61a3f6473b75ad046711a84d637edf3a3059`。
+
+初始残留四个 Full A test 容器：baseline、MinIO、UI/CSP、UI；仅查看 mount metadata，均没有 live 数据卷，保持其状态。`bingyan-netdisk-data` 从未挂载、读取、写入、迁移、重启或删除。本轮所有业务夹具使用 `t.TempDir`、tmpfs 或新独立演示卷，旧版本迁移只用合成数据库夹具。
+
+### 主线 A
+
+重新验证了核心注册/登录/Session、文件 CRUD、文件夹与跨用户隔离、CSRF、大小限制/中断清理、重启恢复；分享创建/列表/匿名/撤销/源删除失效/动态子树边界；资料/账户删除和其他用户 dedupe 引用存活；并发相同内容单副本/最终引用回收；真实 HTTP 206、Content-Range 与分段重组；分片幂等、状态、重启继续、取消、过期、坏分片、IDOR 和最终去重；嵌套 ZIP/空目录/名称冲突/Zip Slip/缓存失效/过期/Range。
+
+MinIO 使用已有隔离 tmpfs server。重新执行真实 Put/Get/HEAD/删除与重启、失败恢复、object ZIP、匿名/object 307。改进迁移校验：除本地上传流 hash 和远端 HEAD metadata，还回读远端真实字节核对长度/SHA-256，再事务切换 backend 和写入 durable local cleanup；普通下载仅短时 presigned redirect，不代理对象正文。
+
+### 主线 B
+
+NFS 使用固定版本 `willscott/go-nfs v0.0.4`、billy 逻辑适配器。导出 capability 只保存 hash，每次路径/handle/打开文件操作重验导出和 user_id；拒绝越界、Windows 路径、symlink、目录循环和跨用户资源。文件写入 scratch，原文件 ID 保持，在事务中更新内容/ref_count/配额；逻辑 mode/mtime 实际存储，client UID/GID 不改变 app 身份。独立 Linux TCP NFSv3 RPC 测试和有 SYS_ADMIN 的新容器内 kernel mount 均实际验证读写/目录/重命名/删除。NFSv3 锁、ACL、传输加密和重复名称歧义访问不提供；这些边界写明，没有空实现冒充。
+
+P2P 增加 `p2p` 分享类型和 owner-only offer API，匿名链接只交换私有地址、hash、长度、短期 TLS fingerprint。`cmd/netdisk-p2p` 两个客户端直接连接，TLS 1.3/fingerprint pinning/token 校验、长度与 hash 校验、无覆盖发布；发送端发送前重新核对 signaling，旧 offer 不能绕过撤销。针对性测试实际传输 1 MiB，应用 signaling response 257 bytes；坏 token、hash、fingerprint、过期、跨用户 offer、源删除与撤销均测试。
+
+### The end? 扩展（与主线分开）
+
+显式本地开发邮箱适配器（6 位随机码、hash-only、10 分钟、单次使用、5 次错误、30 秒重发、邮箱唯一）；校验旧密码后 bcrypt 修改，并事务撤销全部 Session/NFS 导出/验证码。配额默认 1 GiB，计逻辑 bytes 和上传预留，普通/分片/NFS 统一执行，统计含本人内容去重大小。分享事件只记录 kind/time，无 IP/token/预签名链接，30 天清理；分析是请求数，未冒称完成下载字节或独立访客。存储策略选择 >=1 MiB、低访问、7 天冷 local blob，由维护密钥+所有者+CSRF 明确执行真实 MinIO 迁移，不声称云自动运维。
+
+### 浏览器与最终验收
+
+浏览器技能 `agent-browser` 用独立 localhost 会话。实际注册/登录、目录创建、普通上传、匿名分享/统计、普通下载/ZIP、分片上传、显示名称、邮箱绑定、NFS 导出创建/撤销；源/匿名/浏览器下载 SHA-256 `43c3af516f3489b61190ae5d4ef6fe04b3d2f0db3a137faac3a34fee00644f23`（212992 bytes）。辅助 download 命令取消；首次 launch 指定项目下载目录后普通 click 成功，没有更改附件 CSP。设置长弹窗需内部滚动才能点原底部关闭，改为顶部 sticky 关闭，并在弹窗内显示操作结果。
+
+可复现独立演示启动脚本为 `scripts/full-demo.ps1/.sh`，新卷 `bingyan-netdisk-full-demo-data`，网页 38125、NFS 38126 均只发布 loopback；旧启动/验收脚本未用于本轮。接口/协议细节见 `docs/full-protocols.md`。最终统一回归、独立 CLI 和演示脚本结果追加在 `evidence/full-requirements-checks.txt`，不把未执行项写 PASS。
+
+最终统一验收：gofmt clean、`go test ./...`（同时设置真实 MinIO 与 NFS kernel mount 两个 opt-in，无相应 skip）、`go vet ./...`、两命令构建全部 PASS。Windows 独立启动脚本实际运行、两个独立 P2P CLI 进程直接 TLS 传输 212992 bytes 且 cmp/hash 一致；Linux 启动脚本只做 `sh -n`，完整脚本运行 NOT_RUN（协议、Linux app 和 kernel mount 已真实验证）。最终编译版浏览器再次验证全部必需入口，并完成密码修改/重新登录/合成账号删除，普通下载和 ZIP entry hash 一致；JS errors 为空。截图已目视审查，不含验证码、token、cookie 或真实数据。
+
+已关闭本轮浏览器，移除本轮 tmpfs browser 与 demo 容器及本轮全新合成 demo 卷；仅保留接管前四个 Full A 隔离容器。Go 临时验收容器均 `--rm`；无 live 操作。源码和证据留工作区，HEAD/main/origin main 仍 f04850f，暂存为空且 index 最终字节指纹与接管时相同。全部当轮功能/要求验收完成后停止，下一步仅审查工作区后由用户明确授权提交。
+
+### 最新规则更新后的续接复验
+
+再次读取最新 AGENTS.md、git status/diff、暂存 diff、index 指纹以及四个原有隔离容器的 mount metadata。最新规则明确授权全部阶段，当前工作区已包含完整 A/B/扩展实现。本次续接没有修改业务源码，没有发现需要修复的遗留失败，原暂存区和四个容器保持原状。
+
+按顺序重新运行 Full A/核心的 19 个顶层专项测试（含真实隔离 MinIO）以及 B/扩展的 7 个顶层专项测试，均 PASS；NFS 使用真实 TCP RPC，P2P 直接传输 1 MiB 且 hash 一致。随后只读 gofmt 检查与 go vet ./... 再次 PASS。完整全量回归、Linux kernel mount、两个独立 CLI 进程和浏览器验收仍对应此前的同一业务代码；本次未重复这些已完成的检查，未把它们写成新执行结果。新输出追加到同一 evidence 文件。三个新工具容器均自动清理，没有创建新数据卷或触碰 live 数据。
+
+### 完整版提交授权与审查
+
+用户明确要求“提交完整版”，授权本地 Git 提交。核查分支仍为 `feature/full-netdisk-task`，原暂存为空，使用仓库已配置的真实 Git 身份，不修改任何身份或 remote 配置。提交白名单为 37 个完整实现、测试、脚本、文档与证据文件；凭据模式检查无匹配，浏览器证据再次目视审查，无真实用户数据或 capability。更新对象存储文档，使其准确描述远端完整 hash 回读验证和显式冷内容策略。业务源码未变，沿用已通过的全部验收结果；仅暂存明确白名单并创建本地提交，不 push、不部署、不操作 live 数据。授权前索引快照保留在忽略的 `.tmp/full-requirements`，不进入提交。
+
 ## 2026-10-01（Asia/Shanghai）
 
 AI 辅助：Codex 完成任务协调和只读入口核查；未启动 OpenCode 模型任务，未使用额外子 Agent。精确协调模型 ID 无法可靠核实，记 UNKNOWN；底层 API 请求数 UNKNOWN。
@@ -215,3 +259,50 @@ S1 的 18 个暂存文件保持原样；S2 修改留在工作区，新增文件�
 - 容器使用 --rm 自动清理，未发布主机端口，未挂载 bingyan-netdisk-data，未运行第二套 Compose；原网盘保持运行。复用既有镜像和项目 Go 缓存，不是空缓存/异机/完全离线实测。
 - 按审查白名单准备最终暂存与源码包，Git 规范化文本换行为 LF。原工作树业务文件原始字节保持，包内版本逐项与 Git 暂存对象核对；最终证据为 evidence/s3-delivery-checks.txt。不在证据内部记录其自身或 ZIP 的循环哈希，ZIP 哈希单独保存 .sha256。
 - 本轮未跑会重启主服务的 S1 HTTP 验收，也未重跑浏览器业务；历史结果不当成本轮执行。Git 身份缺失，未 commit/push，未创建远程仓库。任务到此停止。
+
+
+## Full A 实现：2026-10-03（BINGYAN-NETDISK-FULL-A-CORE-ADVANCED-001）
+
+本轮用户授权覆盖已完成 S3 的源码冻结/旧时间窗。基线 f04850f，分支 feature/full-netdisk-task。Codex 当前主任务 1，精确模型 ID/API 请求数 UNKNOWN；OpenCode、DeepSeek、子 Agent 和持续 goal 均为 0。不提交、不推送、不改远程；原索引检查点在忽略的 `.tmp/full-a/index.before`，索引未修改。既有 live app 不重启、不部署本轮产物，`bingyan-netdisk-data` 不挂载、不读写、不迁移。
+
+### 存储与兼容性
+
+schema v2 增加 blobs / shares / upload_sessions / upload_parts / zip_cache 和持久本地、临时、远端清理队列，users 增加 display_name，files 增加 blob_id。保留文件、账号、会话 ID 和现有 API，保留 files.storage_key 的旧唯一元数据字段；实际下载通过 blob_id 读取 blobs.storage_key。每项迁移事务化、按列/表存在性幂等执行。旧文件逐个流式 SHA-256，大小一致后引用统一 blob，事务成功后再删除重复物理副本。缺失/大小异常的可见旧内容拒绝迁移并回滚高级 schema；可安全回收已删除且无物理内容的旧 tombstone。仅临时旧库夹具参与验证。
+
+普通上传与分片完成共用 publish：32 KiB 缓冲、增量 SHA-256、随机服务端存储键、哈希唯一约束、原子文件引用/ref_count 写入。进程内存储锁和 SQLite 单连接事务串行化文件、目录及物理清理；只支持单个实例操作同一数据目录，长上传/下载会占用该锁。删除元数据与减少引用在同一事务，ref_count=0 作为持久回收状态；重启重试。pending blob 不作为新的上传引用，防止未完成清理的内容被误复用。账户删除复用 releaseFile，显式删除会话、分享、分片及目录引用，其他用户的 blob 不受影响。
+
+每分钟及启动清理到期会话（24 小时）、ZIP（15 分钟）、持久清理队列；私有 tmp/blobs 中超过 24 小时、具有服务端生成名称且无有效引用的孤立文件才会回收。临时文件 0700 目录 / 0600 文件，成功、取消和失败路径及时清理。对象故障后的 GC 错误保留队列以便重试；已为 s3 的数据需要同一对象存储配置。
+
+### 分享、安全和下载
+
+分享 token 为 crypto/rand 的 32 字节随机值，数据库只存 SHA-256。创建返回一次性链接，列表只列分享 ID/资源 ID，撤销/源删除即时失效。文件夹按所属用户和递归子树过滤目录和文件，不返回上级 breadcrumbs 或私有 download_url；文件/目录移动后重新校验当前子树。写操作沿用 Cookie + X-NetDisk-Request / Origin / Fetch Metadata 保护。参数化 SQL，无客户端文件系统路径；资源 ID 不授予跨用户权限。增加 no-referrer，应用不记录全 token。
+
+本地和匿名文件继续用 ServeContent，标准 Range / 206 / Content-Range / 416 不重新实现。对象文件返回空正文 307 和 120 秒 presigned GET，应用没有对象 GET/正文读取；对象 HEAD 仅作 200 鉴权预检。已经签发的对象 URL 在过期前可能仍有效，撤销拒绝新的应用请求。迁移顺序与独立真实 MinIO 测试详见 docs/object-storage.md。
+
+ZIP 从逻辑子树元数据构建，保留嵌套目录和空目录，逐个 io.CopyBuffer（32 KiB）写入私有临时 ZIP，不 ReadAll 内容。entry 拒绝绝对路径、反斜线、冒号、点目录和控制字符。目录先保留原名；重名文件按稳定 ID 顺序保留第一个原名，其余加 [id-counter] 后缀并避让已有项；文件与目录同名时文件加后缀。entry 时间来自逻辑资源创建时间。缓存 fingerprint 包含 owner/root/文件与目录元数据和内容哈希；文件/目录写操作通过事务内触发器使该用户的缓存失效，并记录物理删除。缓存 ZIP 用 ServeContent 支持真实 Range 重组；到期/重启/账户删除均清理。
+
+### 新 API（详细使用约定）
+
+认证写操作统一需 `X-NetDisk-Request: 1`；JSON 需 application/json，正文文件或分片需 application/octet-stream。Cookie 为现有 netdisk_session。现有注册/登录/登出、files、folders、directory 和 move 接口继续有效。
+
+| 方法/路径 | 输入与结果 |
+|---|---|
+| PATCH /api/me | JSON {display_name}，最长 80 个 Unicode 字符，不修改登录 username；200 User |
+| DELETE /api/me | 当前身份，204；删除当前账号全部私有资源，页面二次确认；不能传入他人用户 ID |
+| POST /api/shares | JSON {resource_type: file或folder, resource_id}；201 {share,url}，只在此时能复制 token 链接 |
+| GET /api/shares | 200 {shares:[{id,file_id或folder_id,created_at}]}，不返回 token |
+| DELETE /api/shares/{id} | 当前分享所有者，204；他人/未知返回 404 |
+| GET /s/{token} | 匿名；文件分享直接下载，文件夹分享返回 {folder_id,folders,files} |
+| GET /s/{token}?folder_id={descendant} | 仅共享根或后代的直接子项；空参数为共享根，不返回上级导航 |
+| GET /s/{token}/files/{id}/download | 匿名下载共享文件或共享子树内文件，支持 Range/对象 307 |
+| POST /api/uploads | JSON {name,folder_id,expected_size,part_size}；201 上传会话；大小受现有上传限制，part_size 为 1..8388608，分片数有约 10000 的上限 |
+| PUT /api/uploads/{id}/parts/{index} | 零起始索引，offset=index*part_size；末片必须恰为剩余大小，其余恰为 part_size。首传 201，同哈希重传 200，不同内容 409，不覆盖旧片 |
+| GET /api/uploads/{id} | 200 {session,parts:[{index,size,sha256}]}，过期/他人/未知 404 |
+| POST /api/uploads/{id}/complete | 所有连续分片/大小/每片哈希通过后流式合并和哈希；201 File，事务中发布并删除会话。缺片/破损 409，重复 complete 已无会话返回 404 |
+| DELETE /api/uploads/{id} | 取消并清理私有分片，204 |
+| GET /api/folders/{id}/download | ZIP，支持 HEAD/Range；他人 404，危险持久名称拒绝生成 |
+| POST /api/files/{id}/migrate-s3 | 认证且当前用户所有 + X-NetDisk-Maintenance；需配置对象客户端；成功 200，未授权 403，失败 503且保留安全读取路径 |
+
+Native HTML/CSS/JS 无新增构建链：文件/目录分享按钮，分享列表撤销与一次性链接复制；资料设置与账号删除确认；目录 ZIP 按钮；分片上传 demo 共用现有选文件框。浏览器刷新后可手动贴回会话 ID 并选回同名同大小文件继续；demo 会重新发送全部分片核对幂等哈希，避免悄悄混合两个不同源文件，不把 Cookie/token 放入 Web Storage。
+
+NFS/P2P 未实现、未开始。邮箱绑定、配额统计、分享分析和自动存储策略没有纳入本轮。
