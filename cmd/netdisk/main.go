@@ -23,7 +23,7 @@ func env(key, fallback string) string {
 }
 
 func main() {
-	limit, err := strconv.ParseInt(env("NETDISK_MAX_UPLOAD_BYTES", "104857600"), 10, 64)
+	limit, err := strconv.ParseInt(env("NETDISK_MAX_UPLOAD_BYTES", "1073741824"), 10, 64)
 	if err != nil || limit <= 0 {
 		log.Fatal("invalid upload limit")
 	}

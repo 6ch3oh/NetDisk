@@ -1,0 +1,16 @@
+docker : time="2026-10-06T14:53:03+08:00" level=warning msg="volume \"bingyan-netdisk-gomod\" already exists but was no
+t created by Docker Compose. Use `external: true` to use an existing volume"
+所在位置 行:2 字符: 1
++ docker compose --profile tools run --rm --no-deps --name bingyan-netd ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (time="2026-10-0...xisting volume":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+time="2026-10-06T14:53:03+08:00" level=warning msg="volume \"bingyan-netdisk-gocache\" already exists but was not creat
+ed by Docker Compose. Use `external: true` to use an existing volume"
+ Container bingyan-netdisk-full-p1-baseline Creating
+ Container bingyan-netdisk-full-p1-baseline Created
+?   	bingyan-netdisk/cmd/netdisk	[no test files]
+?   	bingyan-netdisk/cmd/netdisk-p2p	[no test files]
+ok  	bingyan-netdisk/internal/netdisk	2.477s
+?   	bingyan-netdisk/internal/peer	[no test files]

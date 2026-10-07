@@ -1,5 +1,51 @@
 # 开发记录
 
+## 2026-10-03：目录返回按钮（未提交）
+
+用户反馈进入文件夹后找不到返回入口。原“返回上级”采用普通文字样式，本轮改为目录标题下带左箭头、浅蓝背景、边框和至少 42px 高度的“返回上一级”按钮，移动端可见；现有路径中的祖先目录和根目录仍可点击。根目录禁用返回按钮，避免产生无意义请求。
+
+同时修复导航状态提前提交：原 navigate 在目录请求成功前已修改 state.folder，失败后会留下旧列表/路径与新上传目标不一致。现在请求目录、目录树和统计均成功后才提交目录状态并清除上一目录的选择/批量结果；失败保留原目录、路径与选择。沿用 busy guard 防重复导航。
+
+在真实 app.js 的 Node 行为测试中新增逐级返回、祖先/根路径与首页跳转、并发导航防重复、404 和后续目录树读取失败时状态保持两组；含现有上传/批量操作合计 18 项 PASS。已有 golang:1.27.0 tools 的 gofmt clean、go test -count=1 ./...、go vet ./... 和两个客户端构建 PASS。
+
+全新 bingyan-netdisk-full-navigation-smoke 使用 /data 64MiB tmpfs、127.0.0.1:38129，仅注册合成账号和创建三级目录/合成文件。真实浏览器点击逐级返回“三级目录→二级目录→导航测试→根目录”、祖先路径跳转、根目录跳转和真实不存在目录 404 后选择/上传目标保持，均 PASS。390px 屏幕返回按钮可见、可点击且无页面溢出；JS errors 为空，截图仅合成数据并经目视检查。核对自己 demo 的精确容器 ID/独立数据挂载后，用 .tmp/full-navigation 新二进制更新 38125，保留 demo 数据与旧二进制；新合成账号再验证进入/返回，核对用户名后仅删除本轮检查账号。自己的 tmpfs 容器/测试浏览器已清理，旧 38120/live 服务、二进制、数据卷未请求或操作。没有提交、推送、暂存、reset/clean、后台 Codex、OpenCode、DeepSeek、子 Agent 或 goal。详见 evidence/folder-navigation-checks.txt。
+
+## 2026-10-03：勾选与批量操作（未提交）
+
+按用户百度网盘截图的操作方式增加文件/文件夹行勾选、当前目录全选/部分状态、已选数量、选中行高亮和批量工具栏，保留原上传与逐项操作。提供打包下载、逐项重命名、同目标移动、独立链接分享、确认删除；文件夹批量删除包括子树。操作前预览，期间禁用控件/重复提交，逐项成功/失败继续，结束刷新；失败项仍存在时保留选择，导航/退出清空私有状态。分享部分失败只重试失败项，前次成功链接保留在当前页内存供复制，导航/退出清除。窄屏可见勾选，顶部长用户名截断防溢出。
+
+后端新增本人选中资源 ZIP 和显式递归目录删除，复用原 ZIP 写入、缓存、失效、Range、所有权/CSRF/参数化 SQL 与 dedupe GC。子树删除的文件引用、目录、上传会话及 durable 分片清理标记在事务内提交，其他用户共享 blob 保留；注入物理 GC 故障得到真实 503/tombstone，故障解除后清理恢复。ZIP 可覆盖任意本人选中条目，重复/父子重叠去重，包含非法/外人条目拒绝，最多 200 项，路径安全和同名避让沿用原实现。未新建数据库表。
+
+Node 6 项勾选/批量行为测试加已有上传/自动续传 10 项最终全部 PASS；Go 3 项选中 ZIP/Range/隔离/失效、子树删除/引用/分片/分享、GC 故障恢复专项 PASS；原文件夹 ZIP/网页专项 PASS；gofmt clean、go test ./...（2.496s）、go vet ./... 和两个客户端构建 PASS。前端分享收尾后 Node 16 项复验/重新构建 PASS，Go 源码保持同一已验收版本。抽取 ZIP serve 函数时初次漏声明 err，定向编译捕获后修正；旧 DOM 测试夹具对所有选择器返回全元素，改成按 data 属性过滤后原上传测试通过；没有削弱业务断言。链接保留测试也捕获了补丁落到错误循环的位置，修正后才构建最终二进制。
+
+真实 agent-browser 在新 tmpfs bingyan-netdisk-full-selection-smoke（38129、128MiB）注册合成账号、普通三文件上传，创建含子/空目录的测试目录。全选 5 项后取消、选 3 项显示高亮和部分状态；打包浏览器下载 1281 字节 ZIP，6 个合法条目，文件 SHA-256 校验；三分享匿名访问均 200。重命名一个前导空格名称产生真实 400，其余两项成功且只失败项留选，重复 submit 未新增请求。三项移动到目标目录，导航清除勾选；取消删除无变化；确认删除后目录空、三分享 404、其余未选文件保留，用量/预留正确。截图目视仅合成数据，JS errors 为空。自身 tmpfs 容器和浏览器已清理。
+
+最终分享重试在隔离 closeout tmpfs 和新版 38125 各验证：仅第一次分享故意使用错误 CSRF header，服务器真实 403，第二项仍 201；重试只增加一次 POST，最终两条分享且两条链接仍可复制/匿名 200，没有重复成功项。无响应 mock。已按容器 ID/挂载核验，仅更新自己创建的 demo，保留 bingyan-netdisk-full-demo-data 和旧二进制；38125 更新后普通三文件、勾选/批量删除、390px 窄屏无页面横溢、分享部分失败/保留链接均 PASS。每个 demo 检查账号均核对本轮新建用户名后删除，其他账号/文件未操作。旧 38120/live 不请求、不重启、不换二进制、不读写卷；无 commit/push、索引修改、后台 Codex/OpenCode/DeepSeek/子 Agent。证据：evidence/selection-checks.txt、evidence/selection-smoke.png。
+
+## 2026-10-03：普通上传自动分片（未提交）
+
+根据用户最新要求移除分片/恢复面板、会话 ID 输入和取消按钮；普通多选入口统一决定传输方式。阈值严格为 >300,000,000 字节，每片 8MiB，每个文件依次发送各片，批次仍最多 3 个文件并发。默认单文件限制从 100MiB 调到 1GiB，继续执行现有账户配额、预留、所有权、CSRF 与 dedupe。小文件继续复用原 API；逐项状态、完成计数、防重复、部分失败继续和结束刷新保留。
+
+新增后台重试与当前标签页自动恢复，校验服务端每片长度/摘要，阻止同名同大小但内容变化的错误续传。创建增加可选用户隔离幂等键，文件发布事务同时记录完成回执，响应丢失重试不会重复发布；取消、到期、账户/文件删除清理回执。浏览器拒绝 sessionStorage 时内存回退，成功/退出清除记录。新数据库表仅在临时测试夹具和独立 demo 中创建，旧 live 从未连接。
+
+Node 行为测试 10 项、后端自动会话专项、既有分片/网页专项 PASS；最终 gofmt clean、go test ./...（2.672s）、go vet ./...、两客户端构建 PASS。新增存储兼容处理后重新执行最终检查。默认 Go 全量中的可选 MinIO/kernel NFS 集成本轮未启用，未把历史专项结果作为本轮重跑。
+
+真实浏览器在新建 bingyan-netdisk-full-auto-smoke（38128、1.5GiB tmpfs）上传合成 300,000,001 字节文件。主动 abort 第 1 片产生 3 次网络失败，其他两个小文件正常成功；刷新后重新选择，自动复用会话、跳过已收到第 0 片，只补 35 片完成。随后普通入口三文件完整批次 PASS：大文件 36 片、小文件原 API、并发峰值 3、重复 submit 无额外请求、最终 3/3。真实 HTTP 下载流式 SHA-256 与源一致。浏览器内全文件摘要的 CLI 调用出现 EOF，因此下载最终以宿主流式真实请求校验，没有以该未返回的浏览器调用冒充 PASS。JS errors 为空；截图仅含合成文件。自己的 tmpfs 容器与测试浏览器已清理。
+
+核对自己此前创建的 demo 容器 ID、挂载与来源后，仅替换 bingyan-netdisk-full-demo 的容器和已测试二进制，保留原独立 demo 数据卷、账号、文件及旧二进制供恢复；新版本仍在 http://127.0.0.1:38125/。更新后新注册合成账号再跑普通三文件 smoke，页面无手动面板、策略值正确、最终 3/3、JS errors 为空；核对用户名后仅删除这个本轮检查账号与合成文件并关闭测试浏览器。旧 38120/live 服务没有请求、重启、替换二进制或访问数据。详细证据见 evidence/automatic-upload-checks.txt。继续保留未提交改动、空索引；无 commit/push、后台 Codex、OpenCode、DeepSeek、子 Agent 或 goal。
+
+## 2026-10-03：普通批量上传
+
+基于完整版提交 `3250d42` 的干净工作树直接修改，仅当前可见 Codex 线程，无后台 Codex/OpenCode/DeepSeek/子 Agent，不提交或推送。本轮不访问 live 数据卷，所有浏览器业务数据只在新建 `bingyan-netdisk-full-batch-smoke` 的 64 MiB tmpfs，端口仅 `127.0.0.1:38127`。
+
+普通上传 input 增加 multiple，快照所选文件与当前目录，逐个复用原 POST /api/files 原始请求体 API 和 CSRF header。队列最多三个在途请求，单文件异常独立记录，继续处理其余文件；先检查所有大小，超限直接标失败/已跳过，不发请求。逐项显示等待、上传中、成功、失败及错误，总进度包括成功、失败和跳过的终态。沿用同步 busy guard 与禁用控件防重复提交，结束清空选择并刷新目录，保留结果供查看；退出登录清除私人文件名和结果。共用选择框的分片入口明确只允许单个文件。
+
+补充 Node 内置行为测试（真实执行 queue 与 app.js）：七文件并发上限、失败后继续、状态与计数、大小等于上限/空文件、超限零请求、全部跳过、空选择/未知限制、重复 submit、原 API/body/CSRF/目录编码、仅全部结束后刷新、退出清理；五个顶层测试 PASS。Go 静态资源/CSP 测试与单文件核心上传针对性 PASS；最终 gofmt clean、go test ./...、go vet ./... 和构建 PASS。命令为 `node --test scripts/batch-upload.test.cjs`，以及已有 golang:1.27.0 tools；新增队列脚本不引入运行时依赖。
+
+真实 agent-browser smoke：合成账号创建并进入 batch_target，一次选三个文件（4096/6144/12288 bytes），三次真实 POST 均 201，并发峰值 3，同一时刻第二次 submit 没有新请求；最终三个成功、3/3、当前目录刷新，三次真实下载 SHA-256 与源文件一致。另测五文件混合批次：前导空格名返回真实 400，其余三个仍 201，超限没有 POST，观察到等待状态，最终 5/5，目录增加三个文件。最初用 90 个 Unicode 字符的名称作为失败夹具，但服务器按 rune 计数合法接受；仅更正夹具为明确不合法的前导空格，没有修改服务端规则。JS errors 为空，截图目视检查无 token/验证码/真实数据。详情见 evidence/batch-upload-checks.txt；本轮结束移除自己的 tmpfs 容器与浏览器，保留源码和证据为未提交改动。
+
+批量上传运行版本跟进：用户确认截图地址为 `http://127.0.0.1:38120/`。仅查看容器挂载元数据与项目二进制时间，确认旧服务仍运行 `/workspace/bin/netdisk`（2026-10-01 20:36:50 构建），没有请求旧 HTTP 服务、访问 live 卷、覆盖其二进制或重启。再次确认 `bingyan-netdisk-full-demo` 与 `bingyan-netdisk-full-demo-data` 均不存在后，执行已有 full-demo.ps1 构建当前版本并启动新独立实例 `http://127.0.0.1:38125/`；卷全新，账户/文件与旧实例分开。页面补充 Ctrl/Shift 多选提示；Node 五项复验与新运行实例三文件真实浏览器 smoke PASS，input.multiple=true，3/3 成功。仅移除本轮合成检查账号/文件并关闭测试浏览器，保持新 demo 运行供用户使用；无提交/推送。详细记录追加在 batch-upload-checks.txt。
+
 ## 2026-10-03：Full Requirements 可见主线程
 
 TASK=`BINGYAN-NETDISK-FULL-REQUIREMENTS-VISIBLE-APP-001`，分支 `feature/full-netdisk-task`，HEAD/main/origin main 均为 `f04850f`。接管未提交的 Full A 改动，先读取 git status/diff 与隔离资源挂载，再重新执行针对性测试；没有 reset、重写既有高级功能、暂存、提交、推送或修改 remote。当前线程直接完成，没有后台 Codex CLI、OpenCode、DeepSeek、子 Agent 或持续 goal；精确模型 ID/API 数 UNKNOWN。
@@ -306,3 +352,58 @@ ZIP 从逻辑子树元数据构建，保留嵌套目录和空目录，逐个 io.
 Native HTML/CSS/JS 无新增构建链：文件/目录分享按钮，分享列表撤销与一次性链接复制；资料设置与账号删除确认；目录 ZIP 按钮；分片上传 demo 共用现有选文件框。浏览器刷新后可手动贴回会话 ID 并选回同名同大小文件继续；demo 会重新发送全部分片核对幂等哈希，避免悄悄混合两个不同源文件，不把 Cookie/token 放入 Web Storage。
 
 NFS/P2P 未实现、未开始。邮箱绑定、配额统计、分享分析和自动存储策略没有纳入本轮。
+
+
+## P1 多文件上传与单向备份（2026-10-06，未提交）
+
+TASK=BINGYAN-NETDISK-P1-MULTIUPLOAD-SYNC-V1。先接管 feature/full-netdisk-task 的全部现有未提交改动，独立回归再顺序收尾。MULTI_UPLOAD=PASS（浏览器原生 3 文件/下载、真实单项 400 + 2 成功，无 JS errors）；AUTO_SYNC=PASS（新增项目内 Go CLI/PowerShell 启动器，Windows 独立进程新增/修改/重启/锁/删除保留/5 版本摘要）。
+
+真实 HTTP/MinIO 同步新增 8 项和 race PASS；gofmt、42 项顶层 go test ./...、go vet ./...、Node 18 项、Windows/Linux 构建 PASS。已有 CRUD/隔离/分享/dedupe/Range/分片/MinIO/ZIP/TCP NFS/P2P 回归通过，可选 kernel NFS mount 本轮 NOT_RUN。
+
+默认单向保留版本、10 秒轮询、2 并发、8 MiB 分片和最多 5 次持久重试；只读取明确目录，无文件删除传播。详见 docs/automatic-backup.md、任务 TASK、REPORT 及 evidence/p1-checks.txt。业务后端/schema/前端本增量没有改动；当前源码及接管改动保留。无 commit/push/remote/live 卷操作，OpenCode/DeepSeek/子 Agent/后台 Codex=0。仅清理自己的本轮隔离资源，完成后停止。
+
+## 最终封版检查（2026-10-06，BLOCKED）
+
+TASK=BINGYAN-NETDISK-FINAL-CLOSEOUT-001。当前源码的最终隔离回归 PASS：Node 18 项、真实 Windows sync 独立进程、gofmt 空输出、go test ./...、go vet ./...、三个 Linux 程序及 Windows sync 构建；真实 MinIO、TCP NFSv3、kernel mount 读写/目录操作、两独立 P2P CLI 直传及 SHA-256、浏览器注册/登录/目录/原生三文件上传下载/勾选/ZIP/批量分享/账户设置 PASS。普通入口实际上传 300,000,001 bytes（36 片），下载内容一致；JS errors 为空。
+
+正式 app 与 38125 demo 在接管时已停止。正式卷唯一既有挂载者为 bingyan-netdisk-app；只读挂载完成一致性完整 tar 备份、SHA-256 校验和私有全卷/元数据/blob manifest。原基线：12 个账号、8 个文件、1 个目录、2 个会话、8 个物理 blob。备份和旧正式二进制保留在受限 ACL 的 ignored .tmp/final-closeout-20261006，不提交真实数据、秘密或私有 manifest。
+
+恢复到全新 bingyan-netdisk-final-copy-20261006 的迁移前完整性/外键/manifest PASS。当前版本启动并迁移后，账号认证记录 SQL 内部对比、账号/目录/逻辑文件元数据及内容 hash/size、原 8 文件 HTTP 下载均 PASS；物理 blob 从 8 变为 6，旧迁移去重流程清理两份内容相同的旧 storage_key。因此未满足 AGENTS.md 要求的全部原物理 blob manifest 完全一致，COPY_MIGRATION=FAIL，按停止条件判定 BLOCKED；未继续副本重启门槛或正式切换。
+
+停止后再次只读核对正式卷，原计数/元数据/全部 8 个 blob hash/size 仍与基线一致。未 stage/commit/main 更新/push、未替换正式 bin/netdisk、未触碰 live schema、未创建正式合成账号。原工作树/索引完整保留。远端新增 README-only 73251fe 与 feature 分叉已获取分析，后续只能保留该历史正常合并，禁止 force push。
+
+本轮 tmpfs smoke 与 MinIO 已停止并删除；失败副本容器已停止，副本卷、完整备份和私有诊断保留。38120 与 38125 保持接管时的停止状态。OpenCode/DeepSeek/子 Agent/后台 Codex=0。完整脱敏结果见 evidence/final-closeout-checks.txt。下一步需先解决物理副本保留与严格迁移验收合同，再从备份做全新副本迁移及重启验收；不得以逻辑文件一致替代本任务的物理 manifest 门槛。
+
+## 佳琛网盘名称与存储位置核对（2026-10-07）
+
+按用户要求将 internal/netdisk/web/index.html 的页面标题、首页可访问名称、登录欢迎语与两处品牌文字共 5 处改为“佳琛网盘”，README 标题同步更新。保留历史验收记录的原始名称。既有 TestBundledWebAndPolicyIsolation 与 TestBatchUploadWebAssets 均 PASS，当前源码 Linux netdisk 构建 PASS；全新 tmpfs 隔离服务实测 /healthz 和首页均 200，新名称出现 5 次、旧名称 0 次，标题正确。测试容器已停止并删除，构建保留在 ignored .tmp/brand-storage-20261007。
+
+正式 bingyan-netdisk-app 当前仍停止，NETDISK_DATA_DIR=/data，未配置 NETDISK_S3_ENDPOINT。正式上传内容存于本机 Docker Desktop Linux 命名卷 bingyan-netdisk-data：引擎路径 /var/lib/docker/volumes/bingyan-netdisk-data/_data，容器内 /data/blobs 为文件字节，/data/netdisk.db（含 WAL/SHM）为账号、文件/逻辑目录与会话元数据，/data/tmp 为临时分片/缓存。本次只读核对：SQLite integrity/foreign keys PASS，12 账号、8 文件、1 目录、2 会话、8 物理 blob；原元数据与全部 blob hash/size 仍与封版前基线一致。du apparent bytes：卷 18,420,736；blobs 18,227,592；tmp 0；数据库主文件 57,344、WAL 103,032、SHM 32,768。没有读取或输出真实账号密码、密码 hash、会话或 capability 原文。
+
+其他副本：38125 演示卷为 bingyan-netdisk-full-demo-data；失败的迁移演练卷为 bingyan-netdisk-final-copy-20261006，容器均停止。正式完整备份文件为 E:\冰岩实习\NetDisk\.tmp\final-closeout-20261006\live-volume-pre-closeout.tar（18,432,000 bytes），私有 SQLite 副本/manifest 同目录。项目范围文件名分类还发现 .tmp/s2b-backup 的历史归档/SQLite 副本、.tmp/full-a 的隔离测试 SQLite 文件，以及 .tmp/p1-cli-state-*、.tmp/p1-launch-state-* 下的合成 sync state.json；这些不是当前正式卷。项目根 data/、uploads/ 不存在。gomod/gocache 为构建缓存卷。Windows 宿主 Docker 虚拟磁盘的具体 VHDX 位置未跨项目范围检查，不推断其所在盘。
+
+本次未替换正式 bin/netdisk，未启动正式 app、未迁移 live schema，正式二进制 SHA-256 仍等于封版前备份。封版的副本迁移门槛仍 BLOCKED，故新名称目前已落实在源码和验证构建，正式服务尚未切换。未 stage/commit/main 更新/push。OpenCode/DeepSeek/子 Agent/后台 Codex=0。
+
+## 移动硬盘下载备份、归档与恢复（2026-10-07）
+
+用户要求先实现软件功能，服务器购买、流量方案与原封版流程暂缓。本轮新增 internal/backup/pull*.go、平台空间检查、internal/netdisk/archive.go 及对应测试，扩展 netdisk-sync 和 PowerShell 启动器，保留原上传模式。服务端新增账号所有权保护的备份清单与归档 API；disk_archives 为独立附加表，归档记录不含存储凭据或能力令牌。
+
+下载模式将原始字节保存为 versions/文件ID/SHA256/file-安全文件名，原名称、目录链、历史版本及空目录存入硬盘清单。每段 fsync 后才持久化进度，重启重新核对已下载段，完整 SHA-256/大小一致后发布；未变化文件本地校验后跳过网络下载，服务器删除不传播到硬盘。外置绑定状态、硬盘随机标识、根目录身份核对、进程锁、os.Root 路径约束及空间预留用于拒绝缺盘、误换盘和非法路径；本轮使用项目内合成目录验证，无实际移动硬盘挂载操作。
+
+释放在线空间必须显式选择一个文件归档。客户端先重读完整本地备份，服务端在同一事务中核对内容、名称及目录链，再保存回执并释放文件引用；改变的文件拒绝归档，其他引用仍使用的 blob 保留，删除最后引用后的清理由已有持久 GC 处理。归档响应丢失可用相同回执重试。网页“硬盘归档”用文本节点展示合成测试中的硬盘标签、路径与已恢复状态，退出清空记录。
+
+恢复通过原分片上传和请求回执重建文件，先保存新文件 ID，再确认归档恢复状态；重试不会重复发布。支持指定历史版本、全部最新记录及空目录恢复；已存在的新内容保留。服务器损坏后的新目标需显式 RestoreToOtherServer，且该模式禁止下载和归档。最新记录未完成时明确报错，可选之前已验证的历史版本。文件级客户端备份不替代 SQLite、账号和会话的一致性整卷备份；未实现桌面 GUI、自启动、自动容量归档或不同版本之间的分块差分。
+
+当前源码验收：go test -count=1 ./...、go vet ./...、gofmt -l cmd internal 空输出；pull/archive 两组 race 测试；Node 原有批量上传/自动分片/勾选 18 项；Linux netdisk/netdisk-p2p/netdisk-sync 与 Windows sync 构建全部 PASS。新增八个顶层 pull/archive Go 用例及子例覆盖断网/损坏续传、Range/整文件哈希拒绝、换盘/空间/路径边界、远端删除保留、所有权、归档竞争、回执丢失、服务端重启、历史版本与新目标恢复。
+
+真实依赖验收：MinIO 三个集成用例 PASS（含新增下载 Range、凭据隔离、归档最后引用对象删除与恢复）；kernel NFS mount/read/write/mkdir/rename/remove/rmdir PASS；两个独立 P2P CLI 直传 1,048,613 bytes 且 SHA-256 一致。Windows 原有上传 watcher smoke 和新增下载/归档/恢复 smoke PASS，后者验证零字节文件、1,048,613 bytes 文件、重启跳过、远端删除保留与恢复幂等。浏览器实际登录、归档列表、原生三文件上传、全选、账户显示名称保存、退出清空记录 PASS；首次脚本多点了一次已自动关闭的账户弹窗，修正测试步骤后通过，未因此修改产品行为。
+
+构建和私有测试记录保存在 ignored .tmp/disk-backup-20261007，新 Windows 客户端经校验后原子替换 bin/netdisk-sync.exe，旧客户端保留在同一私有目录。正式 bin/netdisk 保持封版前 SHA-256；本轮测试使用独立 tmpfs 或临时目录，从未挂载正式卷。原封版的严格物理 manifest 阻塞仍存在，本轮未 stage/commit/main 更新/push、未正式迁移。详细脱敏结果及合成浏览器截图见 evidence/removable-backup-checks.txt 和 evidence/removable-backup-smoke.png；OpenCode/DeepSeek/子 Agent/后台 Codex 均为 0。
+
+收尾核对：用安装后的默认 bin 客户端重跑公开下载 smoke PASS；PowerShell 启动器 status 模式以合成隐藏输入替身验证 PASS。62 个候选文本文件的高置信度秘密模式扫描无命中，git diff --check PASS，索引仍为空，客户端/完整备份均为 ignored。当前创建的隔离浏览器服务、MinIO 与 NFS 容器已停止并移除；仅保留原本停止的正式、demo 和迁移副本容器。
+
+## GitHub 源码更新（2026-10-07）
+
+在功能实现与验收报告后，用户再次明确要求“更新GitHub”。本次范围为发布已验收的软件源码、测试、简短 README 和脱敏证据；正式 38120 部署及严格副本迁移封版仍暂缓，不把源码发布等同于正式迁移验收通过。README 保留迁移阻塞说明。原有主线程执行、白名单暂存、秘密扫描、保留远端历史、禁止 force push 和禁止修改 remote 等边界继续适用。
+
+更新前再次核对：feature/full-netdisk-task 基线 3250d42，本地 main f04850f，远端 main 73251fe 未出现额外新提交；远端与 feature 的既有分叉仅包含一个 README 修改提交。按普通合并保留其历史，并保留“本地运行、电脑关机时不可访问”的使用说明；旧“尚无分享/续传”等描述已被当前真实实现取代。此前对当前源码的 Go、Node、Windows 客户端、真实 MinIO/NFS/P2P 和浏览器验收结果见 removable-backup-checks.txt；本次未修改已验收业务代码。候选集再次秘密扫描无命中，私有完整备份、数据库、真实用户内容、二进制和临时产物不进入提交。

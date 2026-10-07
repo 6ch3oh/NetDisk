@@ -1,0 +1,57 @@
+TASK=NETDISK_FOLDER_NAVIGATION
+DATE=2026-10-03 (Asia/Shanghai)
+PROJECT=E:\冰岩实习\NetDisk
+BRANCH=feature/full-netdisk-task
+BASELINE=3250d421f436e992a95a0fb1998e9d861f9713cc
+
+IMPLEMENTATION=PASS
+Visible outlined light-blue arrow button: ← 返回上一级; min height42px.
+Parent navigation uses owner-checked breadcrumb parent_id; root disables button.
+Ancestor/root path and sidebar home continue to work.
+Directory, breadcrumbs and upload destination commit only after all directory/tree/stats reads succeed.
+Failed navigation preserves current directory and selection; successful navigation clears selection/results.
+Existing busy guard prevents duplicate requests.
+
+NODE_TESTS=PASS (18 tests, zero failure)
+node --test scripts/selection.test.cjs (8 incl 2 new navigation behavior groups)
+node --test scripts/batch-upload.test.cjs scripts/automatic-upload.test.cjs (10)
+GOFMT=PASS (test -z "$(gofmt -l cmd internal)")
+GO_TEST=PASS (go test -count=1 ./...; internal/netdisk 3.066s)
+GO_VET=PASS (go vet ./...)
+BUILD=PASS (cmd/netdisk and cmd/netdisk-p2p, buildvcs=false, trimpath)
+Runtime=existing golang:1.27.0 tools, --rm --no-deps;
+own checks container=bingyan-netdisk-full-navigation-checks, removed.
+MINIO/NFS_OPT_IN=NOT_RUN for this UI increment; earlier integration records retained.
+
+REAL_BROWSER=PASS (agent-browser Chromium, own isolated session)
+Own app=bingyan-netdisk-full-navigation-smoke
+Container=de22cc5cea517fd75584fffc7c3b1ec12f06f3fcbb23bfd5184c922fde78be4a
+Port=127.0.0.1:38129, /data64MiB tmpfs, no data volume mounted.
+Only synthetic account/tree/file; 3 folders created through real UI, file ordinary upload succeeded.
+Leaf breadcrumbs=根目录 / 导航测试 / 二级目录 / 三级目录
+Missing directory=real404, sameFolder=true, selected=1, title=三级目录, upEnabled=true.
+Native parent button clicks: 三级目录 -> 二级目录 -> 导航测试 -> 我的文件(root).
+Root: folder_id empty, up-button disabled=true.
+Ancestor breadcrumb click returned directly to 导航测试; 根目录 click returned root.
+Mobile viewport390: pageWidth390, button131.40625x43px, visible=true, enabled=true.
+Native mobile button click: 三级目录 -> 二级目录.
+JS_ERRORS=NONE
+SCREENSHOT=evidence/folder-navigation-smoke.png (visually reviewed, synthetic only)
+Browser closed and own tmpfs container removed after exact ID/mount checks.
+
+DEMO_UPDATE=PASS
+http://127.0.0.1:38125/
+Previous own container ID d25129adb5289ec3d76a820c1c26a114973ba142ff3d7d7d972dbdc0736cddf8 verified before replacement.
+New own container ID 7cacdeb7211510ab4f5e0e137e6ff47638594939a03780f9499e1a2d26460d41.
+Same independent bingyan-netdisk-full-demo-data preserved; readonly binary=.tmp/full-navigation.
+Previous builds retained for recovery. No volume removal or existing-account/file mutation.
+Post-update: new synthetic account registered/logged in, 返回检查 created/entered, native up click returned root.
+Exact synthetic username verified before deleting only this check account; test browser closed.
+Updated demo left running. Old38120 app/binary and live volume untouched, no HTTP there.
+
+GIT_STATUS=All changes remain uncommitted; original empty index preserved.
+COMMIT=NO; PUSH=NO; RESET/CLEAN=NO; REMOTE_CHANGED=NO; GLOBAL_CONFIG_CHANGED=NO
+LIVE_DATA_TOUCHED=NO
+OPEN_CODE_CALLS=0; DEEPSEEK_CALLS=0; BACKGROUND_CODEX_CALLS=0; SUBAGENTS=0; GOAL=NO
+BLOCKERS=NONE
+NEXT_SINGLE_STEP=Refresh http://127.0.0.1:38125/ and use ← 返回上一级 under the directory title.

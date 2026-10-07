@@ -40,7 +40,12 @@ func (a *App) migrateExtensions() error {
  CREATE TABLE IF NOT EXISTS share_events(id INTEGER PRIMARY KEY,share_id TEXT NOT NULL REFERENCES shares(id) ON DELETE CASCADE,kind TEXT NOT NULL,created_at INTEGER NOT NULL);
  CREATE INDEX IF NOT EXISTS events_share ON share_events(share_id,created_at);
  CREATE TABLE IF NOT EXISTS nfs_exports(id TEXT PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,token_hash TEXT NOT NULL UNIQUE,expires_at INTEGER NOT NULL);
- CREATE TABLE IF NOT EXISTS p2p_offers(share_id TEXT PRIMARY KEY REFERENCES shares(id) ON DELETE CASCADE,address TEXT NOT NULL,expires_at INTEGER NOT NULL,fingerprint TEXT NOT NULL);`)
+ CREATE TABLE IF NOT EXISTS p2p_offers(share_id TEXT PRIMARY KEY REFERENCES shares(id) ON DELETE CASCADE,address TEXT NOT NULL,expires_at INTEGER NOT NULL,fingerprint TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS upload_requests(user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ request_key TEXT NOT NULL,session_id TEXT NOT NULL UNIQUE,name TEXT NOT NULL,folder_id TEXT NOT NULL,
+ expected_size INTEGER NOT NULL,part_size INTEGER NOT NULL,expires_at INTEGER NOT NULL,
+ file_id TEXT REFERENCES files(id) ON DELETE CASCADE,PRIMARY KEY(user_id,request_key));
+ CREATE INDEX IF NOT EXISTS upload_requests_expiry ON upload_requests(expires_at);`)
 	if err != nil {
 		return err
 	}

@@ -2,20 +2,20 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>冰岩网盘 · 我的文件</title>
-  <link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js" defer></script>
+  <title>佳琛网盘 · 我的文件</title>
+  <link rel="stylesheet" href="/assets/app.css"><script src="/assets/upload-queue.js" defer></script><script src="/assets/selection.js" defer></script><script src="/assets/app.js" defer></script>
 </head>
 <body>
   <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
   <section id="auth-view" class="auth-layout">
     <div class="auth-story">
-      <a class="brand" href="/" aria-label="冰岩网盘首页"><span class="brand-mark">N</span><span>冰岩网盘<small>NETDISK</small></span></a>
+      <a class="brand" href="/" aria-label="佳琛网盘首页"><span class="brand-mark">N</span><span>佳琛网盘<small>NETDISK</small></span></a>
       <div class="story-copy"><span class="eyebrow">你的日常文件空间</span><h1>文件有序，<br>随时取用。</h1><p>从第一份文件开始。<br>上传、整理与下载，都在这里完成。</p></div>
       <div class="story-foot"><span class="status-dot"></span> 个人文件 · 按需创建分享</div>
     </div>
     <main class="auth-panel">
       <div class="auth-card">
-        <span class="eyebrow">欢迎来到冰岩网盘</span><h2 id="auth-title">登录你的空间</h2><p id="auth-description" class="muted">继续管理你的文件。</p>
+        <span class="eyebrow">欢迎来到佳琛网盘</span><h2 id="auth-title">登录你的空间</h2><p id="auth-description" class="muted">继续管理你的文件。</p>
         <div class="auth-tabs" aria-label="账号操作"><button id="login-tab" type="button" class="active" aria-pressed="true">登录</button><button id="register-tab" type="button" aria-pressed="false">注册账号</button></div>
         <form id="auth-form">
           <label for="username">用户名</label><input id="username" name="username" autocomplete="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_]{3,32}" placeholder="输入用户名" aria-describedby="username-help">
@@ -30,32 +30,37 @@
   </section>
   <div id="app-view" class="app-layout" hidden>
     <aside class="sidebar">
-      <a class="brand" href="/"><span class="brand-mark">N</span><span>冰岩网盘<small>NETDISK</small></span></a>
+      <a class="brand" href="/"><span class="brand-mark">N</span><span>佳琛网盘<small>NETDISK</small></span></a>
       <p class="nav-label">我的空间</p><button id="home-button" class="nav-item active" type="button"><span aria-hidden="true">▤</span> 我的文件 <span id="side-count" class="count">0</span></button>
       <div class="sidebar-bottom"><span class="status-dot"></span> 仅本人可访问<p>安心存放，轻松整理。</p></div>
     </aside>
     <div class="workspace">
-      <header class="topbar"><span class="topbar-title">个人文件空间</span><div class="account"><span class="avatar" aria-hidden="true">我</span><span id="current-user"></span><button id="profile-button" class="quiet" type="button">账号设置</button><button id="shares-button" class="quiet" type="button">我的分享</button><button id="logout-button" class="quiet" type="button">退出登录</button></div></header>
+      <header class="topbar"><span class="topbar-title">个人文件空间</span><div class="account"><span class="avatar" aria-hidden="true">我</span><span id="current-user"></span><button id="profile-button" class="quiet" type="button">账号设置</button><button id="shares-button" class="quiet" type="button">我的分享</button><button id="archives-button" class="quiet" type="button">硬盘归档</button><button id="logout-button" class="quiet" type="button">退出登录</button></div></header>
       <main class="main-content">
         <div class="page-heading"><div><span class="eyebrow">文件管理</span><h1 id="directory-title">我的文件</h1><p id="file-summary" class="muted">正在读取文件…</p></div><div class="heading-actions"><button id="new-folder-button" class="secondary" type="button">新建文件夹</button><button id="refresh-button" class="secondary" type="button">刷新列表</button></div></div>
-        <nav class="directory-nav" aria-label="目录导航"><button id="up-button" class="quiet" type="button">返回上级</button><div id="breadcrumbs"></div></nav>
+        <nav class="directory-nav" aria-label="目录导航"><button id="up-button" class="secondary directory-back" type="button" disabled><span aria-hidden="true">←</span> 返回上一级</button><div id="breadcrumbs" aria-label="当前目录路径"></div></nav>
         <p id="quota-summary" class="muted" role="status"></p>
         <section class="upload-card" aria-labelledby="upload-title">
-          <div class="upload-symbol" aria-hidden="true">↑</div><div class="upload-copy"><h2 id="upload-title">上传一份新文件</h2><p id="upload-limit" class="muted">选择文件后开始上传，保留原始内容。</p></div>
-          <form id="upload-form"><label class="sr-only" for="upload-input">选择上传文件</label><input id="upload-input" type="file" required><button id="upload-button" class="primary" type="submit" disabled>开始上传</button></form>
-          <p id="upload-status" class="upload-status" aria-live="polite" hidden></p>
+          <div class="upload-symbol" aria-hidden="true">↑</div><div class="upload-copy"><h2 id="upload-title">上传新文件</h2><p id="upload-limit" class="muted">可一次选择多个文件，保留原始内容。</p></div>
+          <form id="upload-form"><label class="sr-only" for="upload-input">选择上传文件（可多选）</label><input id="upload-input" type="file" multiple required><button id="upload-button" class="primary" type="submit" disabled>开始上传</button></form>
+          <div id="upload-results" class="upload-results" hidden><p id="upload-status" class="upload-status" role="status" aria-live="polite"></p><ul id="upload-list" aria-label="逐文件上传状态"></ul></div>
         </section>
-        <section class="upload-card" aria-labelledby="resume-title"><div class="upload-copy"><h2 id="resume-title">分片上传 / 恢复</h2><p class="muted">先在上方选择文件。保留会话 ID，刷新后选回同一文件继续；会话有效期 24 小时。</p><label for="resume-id">上传会话 ID（新建时留空）</label><input id="resume-id" maxlength="32" autocomplete="off"><button id="resume-button" class="secondary" type="button">分片上传 / 继续</button><button id="cancel-upload-button" class="quiet" type="button">取消会话</button><p id="resume-status" role="status"></p></div></section>
         <section class="file-panel" aria-labelledby="list-title">
           <div class="panel-heading"><h2 id="list-title">当前目录</h2><span class="muted">文件夹优先 · 文件按上传时间排列</span></div>
+          <div id="selection-toolbar" class="selection-toolbar" role="toolbar" aria-label="选中文件批量操作">
+            <span id="selection-count" role="status" aria-live="polite">未选择文件</span><button id="selection-clear" class="quiet" type="button" disabled>取消选择</button>
+            <div class="selection-actions"><button id="batch-download" class="secondary" type="button" disabled>打包下载</button><button id="batch-share" class="secondary" type="button" disabled>批量分享</button><button id="batch-rename" class="secondary" type="button" disabled>重命名</button><button id="batch-move" class="secondary" type="button" disabled>移动</button><button id="batch-delete" class="secondary delete-action" type="button" disabled>删除</button></div>
+          </div>
           <div id="empty-state" class="empty-state" hidden><div class="empty-icon" aria-hidden="true">▤</div><h3>还没有文件</h3><p>上传第一份文件，开始整理你的空间。</p></div>
-          <div class="table-wrap"><table id="file-table"><thead><tr><th scope="col">文件名称</th><th scope="col">大小</th><th scope="col">上传时间</th><th scope="col" class="actions-title">操作</th></tr></thead><tbody id="file-rows"></tbody></table></div>
+          <div class="table-wrap"><table id="file-table"><thead><tr><th scope="col" class="selection-cell"><input id="select-all" type="checkbox" aria-label="全选当前目录"></th><th scope="col">文件名称</th><th scope="col">大小</th><th scope="col">上传时间</th><th scope="col" class="actions-title">操作</th></tr></thead><tbody id="file-rows"></tbody></table></div>
+          <div id="batch-feedback" class="batch-feedback" hidden><p id="batch-progress" role="status" aria-live="polite"></p><ul id="batch-results" aria-label="批量操作结果"></ul></div>
         </section>
         <p class="page-foot">文件由你掌握 · 分享链接仅访问授权范围</p>
       </main>
     </div>
   </div>
   <dialog id="action-dialog" aria-labelledby="dialog-title"><form id="action-form"><h2 id="dialog-title"></h2><p id="dialog-description" class="muted"></p><p id="dialog-error" role="alert" hidden></p><label id="name-label" for="new-name">新名称</label><input id="new-name" maxlength="255" autocomplete="off"><label id="target-label" for="move-target" hidden>目标目录</label><select id="move-target" hidden></select><div class="dialog-actions"><button id="dialog-cancel" class="secondary" type="button">取消</button><button id="dialog-submit" class="primary" type="submit">保存</button></div></form></dialog>
+  <dialog id="batch-dialog" aria-labelledby="batch-title"><form id="batch-form"><h2 id="batch-title"></h2><p id="batch-description" class="muted"></p><ul id="batch-items"></ul><div id="batch-rename-fields"></div><label id="batch-target-label" for="batch-target" hidden>目标目录</label><select id="batch-target" hidden></select><p id="batch-live-status" role="status" aria-live="polite"></p><div class="dialog-actions"><button id="batch-cancel" class="secondary" type="button">取消</button><button id="batch-submit" class="primary" type="submit">确认</button></div></form></dialog>
   <dialog id="profile-dialog" aria-labelledby="profile-title">
     <button id="profile-close" class="secondary account-dialog-close" type="button">关闭</button><p id="profile-feedback" role="status" hidden></p>
     <form id="profile-form"><h2 id="profile-title">账号设置</h2><p class="muted">用户名用于登录，显示名称用于展示。</p><label for="display-name">显示名称</label><input id="display-name" maxlength="80" autocomplete="nickname"><div class="dialog-actions"><button class="primary" type="submit">保存显示名称</button></div></form>
@@ -66,6 +71,7 @@
     <div class="dialog-actions"><button id="delete-account-button" class="danger" type="button">删除账号</button></div>
   </dialog>
   <dialog id="shares-dialog"><h2>我的分享</h2><p class="muted">新分享链接只在创建时显示，请及时复制。撤销后链接立即失效。文件夹链接返回目录 API，可按 folder_id 导航。</p><p id="share-feedback" role="status" hidden></p><label for="share-url">刚创建的分享链接</label><input id="share-url" readonly><button id="copy-share-button" class="secondary" type="button">复制链接</button><div id="share-list"></div><button id="shares-close" class="secondary" type="button">关闭</button></dialog>
+  <dialog id="archives-dialog" aria-labelledby="archives-title"><h2 id="archives-title">硬盘归档</h2><p class="muted">这里记录已由硬盘客户端校验并移出在线空间的文件。需要使用时，接入对应硬盘并通过客户端恢复。普通下载备份不会移除在线文件。</p><p id="archives-feedback" role="status" hidden></p><div id="archives-list"></div><div class="dialog-actions"><button id="archives-refresh" class="secondary" type="button">刷新记录</button><button id="archives-close" class="secondary" type="button">关闭</button></div></dialog>
   <noscript>请启用 JavaScript 以使用文件管理功能。</noscript>
 </body>
 </html>

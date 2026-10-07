@@ -1,9 +1,10 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
-const state = {user: null, files: [], folders: [], allFolders: [], folder: '', crumbs: [], mode: 'login', busy: false, action: null, limit: null};
+const state = {user: null, files: [], folders: [], allFolders: [], folder: '', crumbs: [], mode: 'login', busy: false, action: null, limit: null, threshold: null, partSize: null, selected: new Set(), batch: null};
+const uploadResumes=uploadResumeStore(browserUploadStorage());
 const messages = {'invalid credentials':'用户名或密码不正确，请重试。','username unavailable':'这个用户名已被使用，请换一个。','invalid file name':'名称不能包含路径分隔符、控制字符或点目录。','request verification failed':'请求未通过验证，请刷新页面后重试。','upload too large':'文件超过上传大小限制，请选择较小的文件。','file not found':'文件不存在或已被移除，请刷新列表。','user quota exceeded':'空间配额不足，请先删除不需要的文件或取消上传会话。','invalid or expired code':'验证码错误、过期或已使用。','current password incorrect':'当前密码不正确。','email unavailable':'此邮箱已被使用。','wait before requesting another code':'请等待 30 秒后再获取验证码。','email adapter disabled':'尚未开启本地邮箱演示模式。'};
 Object.assign(messages,{'folder not found':'目录不存在或不可访问，请返回根目录。','folder name conflict':'同级已有同名文件夹，请换一个名称。','folder not empty':'文件夹非空，请先移走其中的文件和子文件夹。','folder cycle':'不能移动到自身或自己的子目录。'});
-function notice(text, error=false) { $('notice').textContent=text; $('notice').classList.toggle('error',error); $('notice').hidden=!text; $('dialog-error').textContent=error?text:''; $('dialog-error').hidden=!error;for(const id of ['profile-feedback','share-feedback']){$(id).textContent=text;$(id).hidden=!text;$(id).classList.toggle('error',error);} }
+function notice(text, error=false) { $('notice').textContent=text; $('notice').classList.toggle('error',error); $('notice').hidden=!text; $('dialog-error').textContent=error?text:''; $('dialog-error').hidden=!error;for(const id of ['profile-feedback','share-feedback','archives-feedback']){$(id).textContent=text;$(id).hidden=!text;$(id).classList.toggle('error',error);} }
 function setMode(mode) {
   state.mode=mode; const register=mode==='register'; $('auth-title').textContent=register?'创建你的空间':'登录你的空间'; $('auth-description').textContent=register?'创建账号，开始存放你的文件。':'继续管理你的文件。'; $('auth-submit').textContent=register?'创建账号':'登录';
   for (const [id,active] of [['login-tab',!register],['register-tab',register]]) {$(id).classList.toggle('active',active);$(id).setAttribute('aria-pressed',String(active));}
@@ -11,38 +12,67 @@ function setMode(mode) {
 }
 function showUser(user) {
   state.user=user; $('auth-view').hidden=!!user; $('app-view').hidden=!user; $('current-user').textContent=user?(user.display_name||user.username):'';
-  if(!user){state.files=[];state.folders=[];state.allFolders=[];state.folder='';state.crumbs=[];state.limit=null;$('file-rows').replaceChildren();$('upload-input').value='';if($('action-dialog').open)$('action-dialog').close();$('profile-dialog').close();$('shares-dialog').close();for(const id of ['share-url','resume-id','nfs-path','email-address','email-code','old-password','new-password'])$(id).value='';$('email-delivery').textContent='';$('nfs-list').replaceChildren();}
+  if(!user){state.files=[];state.folders=[];state.allFolders=[];state.folder='';state.crumbs=[];state.limit=null;state.threshold=null;state.partSize=null;uploadResumes.clear();$('file-rows').replaceChildren();$('upload-input').value='';$('upload-results').hidden=true;$('upload-list').replaceChildren();$('upload-status').textContent='';if($('action-dialog').open)$('action-dialog').close();$('profile-dialog').close();$('shares-dialog').close();for(const id of ['share-url','nfs-path','email-address','email-code','old-password','new-password'])$(id).value='';$('email-delivery').textContent='';$('nfs-list').replaceChildren();}
+  if(!user){clearSelection();clearBatchFeedback();state.batch=null;$('batch-dialog').close();$('batch-rename-fields').replaceChildren();$('batch-items').replaceChildren();}
+  if(!user){$('archives-dialog').close();$('archives-list').replaceChildren();}
 }
-function controls() {document.querySelectorAll('button,input,select').forEach(el=>{el.disabled=state.busy;});$('upload-button').disabled=state.busy||!$('upload-input').files.length;$('up-button').disabled=state.busy||!state.folder;}
+function controls() {document.querySelectorAll('button,input,select').forEach(el=>{el.disabled=state.busy;});$('upload-button').disabled=state.busy||!$('upload-input').files.length;$('up-button').disabled=state.busy||!state.folder;renderSelection();}
 async function run(work) {if(state.busy)return;state.busy=true;controls();notice('');try{await work();}catch(err){notice(err.message||'操作未完成，请重试。',true);}finally{state.busy=false;controls();}}
 async function api(path, options={}) {
-  let response;try{response=await fetch(path,{credentials:'same-origin',...options,headers:{'X-NetDisk-Request':'1',...options.headers}});}catch{throw new Error('暂时无法连接，请检查连接后重试。');}
+  let response;try{response=await fetch(path,{credentials:'same-origin',...options,headers:{'X-NetDisk-Request':'1',...options.headers}});}catch{const err=new Error('暂时无法连接，请检查连接后重试。');err.status=0;throw err;}
   if(!response.ok){let body={};try{body=await response.json();}catch{}
     if(response.status===401&&state.user){showUser(null);setMode('login');throw new Error('登录已过期，请重新登录。');}
-    throw new Error(messages[body.error]||(response.status===401?'请先登录。':response.status===400?'输入不符合要求，请检查后重试。':response.status>=500?'服务暂时不可用，请稍后重试。':'操作未完成，请刷新后重试。'));
+    const err=new Error(messages[body.error]||(response.status===401?'请先登录。':response.status===400?'输入不符合要求，请检查后重试。':response.status>=500?'服务暂时不可用，请稍后重试。':'操作未完成，请刷新后重试。'));err.status=response.status;throw err;
   }
   return response.status===204||options.method==='HEAD'?null:response.json();
 }
 function json(method,body){return {method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};}
+async function loadArchives(){
+  const result=await api('/api/archives');const holder=$('archives-list');holder.replaceChildren();
+  if(!result.archives.length){holder.append(textElement('p','还没有归档记录。完成硬盘备份后，可在客户端选择文件进行归档。','muted'));return;}
+  for(const item of result.archives){
+    const card=document.createElement('section');card.className='archive-record';
+    const path=[...item.file.folders.map(f=>f.name),item.file.name].join(' / ');
+    card.append(textElement('h3',item.file.name),textElement('p',path,'muted'));
+    card.append(textElement('p',`${size(item.file.size)} · 硬盘：${item.disk_label} · ${new Date(item.archived_at*1000).toLocaleString()}`));
+    card.append(textElement('p',item.restored_file_id?'已恢复到在线空间；硬盘副本继续保留。':'已归档到硬盘，接入硬盘后可通过客户端恢复。'));
+    const details=document.createElement('details');details.append(textElement('summary','查看恢复信息'));
+    details.append(textElement('p','原文件 ID：'+item.file.id),textElement('p','硬盘内位置：'+item.local_path));card.append(details);holder.append(card);
+  }
+}
+$('archives-button').addEventListener('click',()=>run(async()=>{await loadArchives();$('archives-dialog').showModal();}));
+$('archives-refresh').addEventListener('click',()=>run(loadArchives));
+$('archives-close').addEventListener('click',()=>$('archives-dialog').close());
 function size(bytes){if(bytes<1024)return `${bytes} B`;const units=['KiB','MiB','GiB'];let v=bytes/1024,i=0;while(v>=1024&&i<units.length-1){v/=1024;i++;}return `${v.toFixed(v<10?1:0)} ${units[i]}`;}
 function textElement(tag,text,className){const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e;}
 function renderFiles(){
-  const rows=$('file-rows');rows.replaceChildren();$('side-count').textContent=state.files.length;$('file-summary').textContent=`${state.folders.length} 个文件夹 · ${state.files.length} 个文件 · ${size(state.files.reduce((n,f)=>n+f.size,0))}`;
-  $('empty-state').hidden=state.files.length+state.folders.length>0;$('file-table').hidden=state.files.length+state.folders.length===0;
-  for(const folder of state.folders){const row=document.createElement('tr'),cell=document.createElement('td'),name=textElement('div','','file-name');const enter=textElement('button',folder.name,'folder-link');enter.type='button';enter.setAttribute('aria-label','进入 '+folder.name);enter.addEventListener('click',()=>navigate(folder.id));name.append(textElement('span','DIR','file-icon folder-icon'),enter);cell.append(name);row.append(cell,textElement('td','文件夹','muted'),textElement('td',new Date(folder.created_at*1000).toLocaleDateString('zh-CN'),'muted'));const actionCell=document.createElement('td'),actions=textElement('div','','file-actions');for(const [label,action] of [['ZIP 下载','zip'],['分享','share'],['重命名','rename'],['移动','move'],['删除','delete']]){const button=textElement('button',label,action==='delete'?'delete-action':'');button.type='button';button.setAttribute('aria-label',`${label}文件夹 ${folder.name}`);button.addEventListener('click',()=>action==='zip'?run(()=>download({name:folder.name+'.zip',download_url:'/api/folders/'+folder.id+'/download'})):action==='share'?run(()=>shareResource('folder',folder.id)):openAction(action,folder,'folder'));actions.append(button);}actionCell.append(actions);row.append(actionCell);rows.append(row);}
-  for(const file of state.files){
-    const row=document.createElement('tr'),nameCell=document.createElement('td'),name=textElement('div','','file-name');
-    const ext=file.name.includes('.')?file.name.split('.').pop().slice(0,4).toUpperCase():'FILE';name.append(textElement('span',ext||'FILE','file-icon'),textElement('span',file.name));nameCell.append(name);row.append(nameCell,textElement('td',size(file.size),'muted'),textElement('td',new Date(file.created_at*1000).toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}),'muted'));
+  const rows=$('file-rows');rows.replaceChildren();$('side-count').textContent=state.files.length;
+  $('file-summary').textContent=`${state.folders.length} 个文件夹 · ${state.files.length} 个文件 · ${size(state.files.reduce((n,f)=>n+f.size,0))}`;
+  const resources=visibleResources();$('empty-state').hidden=resources.length>0;$('file-table').hidden=!resources.length;
+  for(const {kind,value} of resources){
+    const folder=kind==='folder',row=document.createElement('tr'),nameCell=document.createElement('td'),name=textElement('div','','file-name');
+    row.append(selectionCell(row,kind,value));
+    const ext=folder?'DIR':value.name.includes('.')?value.name.split('.').pop().slice(0,4).toUpperCase():'FILE';
+    name.append(textElement('span',ext||'FILE','file-icon'+(folder?' folder-icon':'')));
+    if(folder){const enter=textElement('button',value.name,'folder-link');enter.type='button';enter.setAttribute('aria-label','进入 '+value.name);enter.addEventListener('click',()=>navigate(value.id));name.append(enter);}
+    else name.append(textElement('span',value.name));
+    nameCell.append(name);
+    const uploaded=new Date(value.created_at*1000);
+    row.append(nameCell,textElement('td',folder?'文件夹':size(value.size),'muted'),textElement('td',folder?uploaded.toLocaleDateString('zh-CN'):uploaded.toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}),'muted'));
     const actionsCell=document.createElement('td'),actions=textElement('div','','file-actions');
-    for(const [label,action] of [['下载','download'],['分享','share'],['重命名','rename'],['移动','move'],['删除','delete']]){const button=textElement('button',label,action==='delete'?'delete-action':'');button.type='button';button.setAttribute('aria-label',`${label} ${file.name}`);button.addEventListener('click',()=>action==='download'?run(()=>download(file)):action==='share'?run(()=>shareResource('file',file.id)):openAction(action,file));actions.append(button);}
+    for(const [label,action] of [[folder?'ZIP 下载':'下载','download'],['分享','share'],['重命名','rename'],['移动','move'],['删除','delete']]){
+      const button=textElement('button',label,action==='delete'?'delete-action':'');button.type='button';button.setAttribute('aria-label',`${label}${folder?'文件夹':''} ${value.name}`);
+      button.addEventListener('click',()=>action==='download'?run(()=>download(folder?{name:value.name+'.zip',download_url:'/api/folders/'+value.id+'/download'}:value)):action==='share'?run(()=>shareResource(kind,value.id)):openAction(action,value,kind));actions.append(button);
+    }
     actionsCell.append(actions);row.append(actionsCell);rows.append(row);
   }
+  renderSelection();
 }
-async function refresh(){const result=await api('/api/directory?folder_id='+encodeURIComponent(state.folder));const tree=await api('/api/folders');const stats=await api('/api/me/stats');state.files=result.files;state.folders=result.folders;state.crumbs=result.breadcrumbs;state.allFolders=tree.folders;renderFiles();renderNavigation();$('quota-summary').textContent=`空间 ${size(stats.used_bytes)} / ${size(stats.quota_bytes)} · 上传预留 ${size(stats.reserved_bytes)} · ${stats.files} 个文件`;$('email-mode').textContent=stats.dev_email?'本地演示模式：验证码只在当前页面显示，不发送真实邮件。':'邮箱演示适配器未开启。';}
-function navigate(id){return run(async()=>{state.folder=id;await refresh();});}
+async function refresh(folder=state.folder, navigation=false){const result=await api('/api/directory?folder_id='+encodeURIComponent(folder));const tree=await api('/api/folders');const stats=await api('/api/me/stats');if(navigation){clearSelection();clearBatchFeedback();}state.folder=folder;state.files=result.files;state.folders=result.folders;state.crumbs=result.breadcrumbs;state.allFolders=tree.folders;renderFiles();renderNavigation();$('quota-summary').textContent=`空间 ${size(stats.used_bytes)} / ${size(stats.quota_bytes)} · 上传预留 ${size(stats.reserved_bytes)} · ${stats.files} 个文件`;$('email-mode').textContent=stats.dev_email?'本地演示模式：验证码只在当前页面显示，不发送真实邮件。':'邮箱演示适配器未开启。';}
+function navigate(id){return run(()=>refresh(id,true));}
 function renderNavigation(){const holder=$('breadcrumbs');holder.replaceChildren();for(const f of [{id:'',name:'根目录'},...state.crumbs]){const button=textElement('button',f.name,'quiet');button.type='button';button.addEventListener('click',()=>navigate(f.id));holder.append(button);if(f.id===state.folder){button.setAttribute('aria-current','page');}else holder.append(textElement('span','/','muted'));}$('directory-title').textContent=state.crumbs.length?state.crumbs[state.crumbs.length-1].name:'我的文件';$('up-button').disabled=state.busy||!state.folder;}
 function folderPath(folder){const parts=[folder.name],seen=new Set([folder.id]);let id=folder.parent_id;while(id){if(seen.has(id))break;seen.add(id);const parent=state.allFolders.find(f=>f.id===id);if(!parent)break;parts.unshift(parent.name);id=parent.parent_id;}return '根目录 / '+parts.join(' / ');}
-async function loadSpace(){const config=await api('/api/config');state.limit=config.max_upload_bytes;$('upload-limit').textContent=`单文件不超过 ${size(state.limit)}，保留原始内容。`;await refresh();}
+async function loadSpace(){const config=await api('/api/config');state.limit=config.max_upload_bytes;state.threshold=config.chunk_threshold_bytes;state.partSize=config.chunk_part_bytes;$('upload-limit').textContent=`可多选文件（按住 Ctrl 或 Shift），单文件不超过 ${size(state.limit)}。`;await refresh();}
 async function download(file){
   await api(file.download_url,{method:'HEAD'});
   const link=document.createElement('a');link.href=file.download_url;link.download=file.name;document.body.append(link);link.click();link.remove();notice('已发起下载，请查看浏览器下载列表。');
@@ -64,10 +94,31 @@ $('auth-form').addEventListener('submit',event=>{event.preventDefault();run(asyn
 $('logout-button').addEventListener('click',()=>run(async()=>{await api('/api/logout',{method:'POST'});showUser(null);setMode('login');notice('已安全退出登录。');}));
 $('refresh-button').addEventListener('click',()=>run(async()=>{await refresh();notice('列表已更新。');}));$('home-button').addEventListener('click',()=>navigate(''));$('up-button').addEventListener('click',()=>navigate(state.crumbs.length?state.crumbs[state.crumbs.length-1].parent_id:''));$('new-folder-button').addEventListener('click',()=>openAction('create',undefined,'folder'));
 $('upload-input').addEventListener('change',controls);
+initSelection();
+function renderUploads({items,completed,total}) {
+  const labels={waiting:'等待',uploading:'上传中',success:'成功',failed:'失败'};
+  $('upload-results').hidden=false;
+  $('upload-status').textContent=`已完成 ${completed}/总数 ${total}`;
+  const rows=items.map(item=>{
+    const row=textElement('li','','upload-item');row.dataset.status=item.status;
+    const label=item.status==='uploading'&&item.progress>0?`${labels[item.status]} · ${Math.round(item.progress*100)}%`:labels[item.status];
+    row.append(textElement('span',item.file.name,'upload-item-name'),textElement('span',label,'upload-item-state'));
+    if(item.error)row.append(textElement('span',item.error,'upload-item-error'));
+    return row;
+  });
+  $('upload-list').replaceChildren(...rows);
+}
 $('upload-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{
-  const file=$('upload-input').files[0];if(!file)return;if(state.limit&&file.size>state.limit)throw new Error(`文件超过 ${size(state.limit)} 的上传限制。`);
-  $('upload-status').hidden=false;$('upload-status').textContent=`正在上传“${file.name}”，请稍候…`;
-  try{await api('/api/files?name='+encodeURIComponent(file.name)+'&folder_id='+encodeURIComponent(state.folder),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});$('upload-input').value='';await refresh();notice('文件上传成功。');}finally{$('upload-status').hidden=true;}
+  const files=Array.from($('upload-input').files);if(!files.length)return;
+  const folder=state.folder,owner=state.user.id;
+  const result=await uploadBatch(files,{limit:state.limit,
+    upload:(file,progress)=>uploadFile(file,{folder,owner,api,threshold:state.threshold,partSize:state.partSize,resumes:uploadResumes,progress}),
+    changed:progress=>{if(state.user?.id===owner)renderUploads(progress);}
+  });
+  $('upload-input').value='';
+  if(!state.user)return;
+  await refresh();
+  notice(`批量上传结束：成功 ${result.success}，失败 ${result.failed}${result.skipped?`（${result.skipped} 个超限已跳过）`:''}。`,result.failed>0);
 });});
 $('dialog-cancel').addEventListener('click',()=>$('action-dialog').close());
 $('action-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{const {action,file,kind}=state.action;const endpoint=kind==='folder'?'/api/folders':'/api/files';if(action==='create')await api('/api/folders',json('POST',{name:$('new-name').value,parent_id:state.folder}));else if(action==='rename')await api(endpoint+'/'+file.id,json('PATCH',{name:$('new-name').value}));else if(action==='move')await api(endpoint+'/'+file.id+'/move',json('POST',kind==='folder'?{parent_id:$('move-target').value}:{folder_id:$('move-target').value}));else await api(endpoint+'/'+file.id,{method:'DELETE'});$('action-dialog').close();await refresh();notice(action==='create'?'文件夹已创建。':action==='rename'?'名称已更新。':action==='move'?'已移动到目标目录。':'已删除。');});});
@@ -87,19 +138,6 @@ $('profile-button').addEventListener('click',()=>run(async()=>{$('display-name')
 $('profile-close').addEventListener('click',()=>$('profile-dialog').close());
 $('profile-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{showUser(await api('/api/me',json('PATCH',{display_name:$('display-name').value})));$('profile-dialog').close();notice('显示名称已更新。');});});
 $('delete-account-button').addEventListener('click',()=>run(async()=>{if(!confirm('永久删除当前账号、文件、文件夹、上传会话和分享？此操作无法撤销。'))return;await api('/api/me',{method:'DELETE'});showUser(null);setMode('login');notice('账号已删除。');}));
-$('resume-button').addEventListener('click',()=>run(async()=>{
- const file=$('upload-input').files[0];if(!file)throw new Error('请先在上方选择文件。');if(file.size>state.limit)throw new Error('文件超过上传限制。');
- let id=$('resume-id').value.trim(),session;
- if(id){const status=await api('/api/uploads/'+encodeURIComponent(id));session=status.session;$('resume-status').textContent=`已有 ${status.parts.length} 个分片，正在核对并继续…`;}
- else{session=await api('/api/uploads',json('POST',{name:file.name,folder_id:state.folder,expected_size:file.size,part_size:1024*1024}));id=session.id;$('resume-id').value=id;}
- if(session.expected_size!==file.size||session.name!==file.name)throw new Error('请选择该会话原来的同名同大小文件。');
- // Re-send each part: the server confirms identical hashes and rejects a changed source.
- const count=Math.ceil(file.size/session.part_size);
- for(let index=0;index<count;index++){await api('/api/uploads/'+id+'/parts/'+index,{method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:file.slice(index*session.part_size,Math.min((index+1)*session.part_size,file.size))});$('resume-status').textContent=`已确认 ${index+1}/${count} 个分片。`;}
- await api('/api/uploads/'+id+'/complete',{method:'POST'});$('resume-id').value='';$('upload-input').value='';$('resume-status').textContent='分片合并完成。';await refresh();notice('上传成功。');
-}));
-$('cancel-upload-button').addEventListener('click',()=>run(async()=>{const id=$('resume-id').value.trim();if(!id)return;if(!confirm('取消此上传并清理已上传分片？'))return;await api('/api/uploads/'+encodeURIComponent(id),{method:'DELETE'});$('resume-id').value='';$('resume-status').textContent='上传会话已取消。';}));
-
 $('email-code-button').addEventListener('click',()=>run(async()=>{const result=await api('/api/me/email-code',json('POST',{email:$('email-address').value}));$('email-delivery').textContent=`本地演示验证码：${result.dev_code}（10 分钟有效，单次使用）`;}));
 $('email-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await api('/api/me/email',json('POST',{email:$('email-address').value,code:$('email-code').value}));state.user=await api('/api/me');$('email-code').value='';$('email-delivery').textContent='';notice('邮箱绑定成功。');});});
 $('password-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{try{await api('/api/me/password',json('POST',{old_password:$('old-password').value,new_password:$('new-password').value}));showUser(null);setMode('login');notice('密码已更新，请重新登录。');}finally{$('old-password').value='';$('new-password').value='';}});});

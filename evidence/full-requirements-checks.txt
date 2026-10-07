@@ -262,3 +262,15 @@ LIVE_DATA_TOUCHED=NO
 OPEN_CODE_CALLS=0
 DEEPSEEK_CALLS=0
 SUBAGENTS=0
+
+P1_CLOSEOUT_2026_10_06
+TASK=BINGYAN-NETDISK-P1-MULTIUPLOAD-SYNC-V1
+MULTI_UPLOAD=PASS native local three-file batch; real 400 failure isolation; browser JS errors empty
+AUTO_SYNC=PASS project CLI; Windows real process new/modified/restart/lock/delete-retention/download digests
+TESTS=PASS gofmt/go test all(42 top-level)/go vet/18 Node/8 backup including real MinIO/race/Windows+Linux build/real PS launcher
+NFS_KERNEL_MOUNT=NOT_RUN in P1; real TCP NFS/P2P/MinIO/Range/ZIP regression PASS; historical kernel result not reclassified
+DETAILS=evidence/p1-checks.txt; REPORT_BINGYAN_NETDISK_P1_MULTIUPLOAD_SYNC_V1.md; docs/automatic-backup.md
+OWN_RESOURCE_CLEANUP=PASS created tmpfs containers and own three browser sessions removed/closed
+LIVE_DATA_TOUCHED=NO
+COMMIT_PUSH_REMOTE=NONE
+OPEN_CODE_DEEPSEEK_SUBAGENTS_BACKGROUND_CODEX=0

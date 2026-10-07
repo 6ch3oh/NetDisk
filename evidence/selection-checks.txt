@@ -1,0 +1,95 @@
+TASK=NETDISK-CHECKBOX-BULK-OPERATIONS
+DATE=2026-10-03
+PROJECT=E:/冰岩实习/NetDisk
+BRANCH=feature/full-netdisk-task
+HEAD=3250d421f436e992a95a0fb1998e9d861f9713cc (unchanged)
+Prior automatic/batch upload changes preserved; current visible thread only.
+
+SELECTION=PASS (files + folders, current-directory all/partial/clear/count/highlight)
+BULK_DOWNLOAD=PASS (single ZIP, nested/empty folders, overlap dedup, stable paths, Range)
+BULK_SHARE=PASS (one capability per resource, existing owner/CSRF API)
+BULK_RENAME=PASS (one name input per selected item)
+BULK_MOVE=PASS (same target; excludes selected folder and all descendants)
+BULK_DELETE=PASS (confirmation explicitly includes nested contents)
+PARTIAL_FAILURE=PASS (independent results, continued processing, failed selection retained)
+SHARE_RETRY=PASS (retry only failures, retain previous successful links in page memory)
+DUPLICATE_SUBMISSION=PASS; NAVIGATION/LOGOUT_PRIVATE_CLEAR=PASS
+
+BACKEND_NEW=GET/HEAD /api/download-selection, DELETE /api/folders/{id}/tree
+Archive: 1..200 unique resources, all checked by user_id, no new schema.
+Delete: atomic metadata/ref_count/chunk cleanup markers; zero-ref GC after commit.
+Existing empty-folder delete semantics preserved. Shared blob owned by another user survives.
+GC fault injection=real503 + durable zero-ref tombstone, recovery PASS after fault removed.
+
+TARGETED_GO=PASS
+TestSelectionZIPContentsDuplicatesRangeOwnershipAndInvalidation
+TestSelectionRecursiveDeleteIsolationDedupeChunksAndSharing
+TestSelectionRecursiveDeleteCleanupFailureIsDurable
+Existing folder ZIP and bundled web/policy/upload assets tests PASS.
+All fixtures use t.TempDir; not any live/user volume.
+
+NODE=PASS (16 top-level tests, including 6 new selection tests)
+node --test scripts/batch-upload.test.cjs scripts/automatic-upload.test.cjs scripts/selection.test.cjs
+node --check internal/netdisk/web/app.js
+node --check internal/netdisk/web/selection.js
+Runtime queue/app/selection exercised; bounded request gates validate duplicate/failure behavior.
+
+FINAL_GO_ENV=existing golang:1.27.0, tools --no-deps, project caches only
+GOFMT=PASS (test -z "$(gofmt -l cmd internal)")
+GO_TEST=PASS (go test -count=1 ./..., netdisk package 2.496s)
+GO_VET=PASS (go vet ./...)
+BUILD=PASS (cmd/netdisk + cmd/netdisk-p2p, buildvcs=false, trimpath)
+Client-only closeout: final Node16 PASS and binaries rebuilt after UI changes; Go code unchanged.
+MINIO_OPT_IN=NOT_RUN in this incremental feature task
+NFS_KERNEL_OPT_IN=NOT_RUN in this incremental feature task
+Historical full-requirements integration evidence not claimed rerun.
+
+REAL_BROWSER=agent-browser Chromium, only own isolated app/demos
+Initial smoke=bingyan-netdisk-full-selection-smoke, port38129, /data128MiB tmpfs
+Normal 3-file upload PASS; root resources=3 files+2 folders.
+Header all=5 / partial=false; cleared; 2 files+1 nested folder selected=3.
+Browser downloaded 网盘文件.zip, 1281 bytes, 6 entries:
+勾选目录/, 勾选目录/子目录/, 勾选目录/子目录/空目录/,
+勾选目录/子目录/inside.txt (25 bytes), automatic-small.txt (31), batch-one.txt (4096).
+Archive SHA256 payloads:
+batch-one.txt=f01eef7433c1e1bdb450b959f4310c1175958178e1e983770d98840b3c24d939 (source matched)
+automatic-small.txt=491ccbb898f513193bb929302908d31316b3e3718b066a191b875ff56cfc3c72
+inside.txt=21211f043256a6e1017ee119d7119aba5fdf5302644a3147cc2ed5a2229dffa5
+3 independent links created; anonymous GETs=200/200/200; full tokens not logged/saved.
+Rename: folder->整理目录 and file->批量重命名.txt succeeded;
+leading-space invalid name real400, original unchanged, only failed checkbox retained.
+Duplicate native/programmatic submit sent no duplicate mutation.
+Move3: selected folder/descendant excluded from targets; all moved to 移动目标;
+root left one unselected file and target folder; target contained exact selected resources.
+Navigate: selected0, previous results cleared.
+Delete cancel: 3 resources still present, selected3.
+Confirmed delete3: target empty incl nested content; all 3 shares404;
+remaining user stats files1,used33,reserved0 (unselected file retained).
+JS_ERRORS=NONE; screenshot visually reviewed, synthetic names/account only.
+SCREENSHOT=evidence/selection-smoke.png
+Own browser/tmpfs container removed after identity and mount verification.
+
+SHARE_CLOSEOUT=own 64MiB tmpfs (bingyan-netdisk-full-selection-closeout), then final38125
+Fault injection: only first share request used invalid CSRF header, actual server403;
+second succeeded. No response mocks. Failure selected1, success link visible1.
+Retry added one request only: POSTs3 total, database shares2 total.
+Final version retained both links, including previous success labeled 已创建链接;
+both anonymous GET200, no duplicate capability for already completed item.
+No real tokens/cookies emitted to evidence; test browser closed; own tmpfs removed.
+
+DEMO=PASS, http://127.0.0.1:38125/ retains bingyan-netdisk-full-demo-data
+Only own container replaced after exact identity/mount verification;
+final readonly binary bind=.tmp/full-selection-final; previous builds preserved.
+Post-update: new synthetic account, normal3 upload, all3 check/delete success, 3/3.
+390px viewport: pageWidth390, checkbox17px visible, toolbar wrapped, no page overflow.
+Final sharing/retry/retained URLs verified in another newly registered synthetic account.
+Exact username checked before deleting each new check account; other data unchanged.
+Logout/UI cleanup: selected0, retained-link memory0, result rows0.
+Demo left running; old38120 service/binary/live volume untouched, no HTTP requests there.
+
+GIT_STATUS=16 modified tracked files, 14 untracked source/tests/evidence files; index empty
+COMMIT=NO; PUSH=NO; RESET/CLEAN=NO; REMOTE_CHANGED=NO; GLOBAL_CONFIG_CHANGED=NO
+LIVE_DATA_TOUCHED=NO
+OPEN_CODE_CALLS=0; DEEPSEEK_CALLS=0; BACKGROUND_CODEX_CALLS=0; SUBAGENTS=0; GOAL=NO
+BLOCKERS=NONE for this request
+NEXT_SINGLE_STEP=Refresh http://127.0.0.1:38125/, tick row checkboxes and use bulk toolbar

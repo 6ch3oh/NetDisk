@@ -1,0 +1,117 @@
+?   	bingyan-netdisk/cmd/netdisk	[no test files]
+?   	bingyan-netdisk/cmd/netdisk-p2p	[no test files]
+?   	bingyan-netdisk/cmd/netdisk-sync	[no test files]
+?   	bingyan-netdisk/internal/backup	[no test files]
+=== RUN   TestConcurrentDedupAndLastReference
+--- PASS: TestConcurrentDedupAndLastReference (0.02s)
+=== RUN   TestShareCapabilitiesSubtreeRevocationAndDeletion
+--- PASS: TestShareCapabilitiesSubtreeRevocationAndDeletion (0.01s)
+=== RUN   TestAccountDeletionProfileAndSharedContent
+--- PASS: TestAccountDeletionProfileAndSharedContent (0.02s)
+=== RUN   TestRealHTTPRangeLocalAndAnonymous
+--- PASS: TestRealHTTPRangeLocalAndAnonymous (0.04s)
+=== RUN   TestResumableRestartIdempotenceIsolationCompleteDedup
+--- PASS: TestResumableRestartIdempotenceIsolationCompleteDedup (0.02s)
+=== RUN   TestUploadCancelExpiryAndCorruptPart
+--- PASS: TestUploadCancelExpiryAndCorruptPart (0.01s)
+=== RUN   TestFolderZIPNestedRangeConflictsInvalidationExpiry
+--- PASS: TestFolderZIPNestedRangeConflictsInvalidationExpiry (0.03s)
+=== RUN   TestAccountSessionLifecycle
+--- PASS: TestAccountSessionLifecycle (0.01s)
+=== RUN   TestFileLifecycleAndOwnership
+--- PASS: TestFileLifecycleAndOwnership (0.01s)
+=== RUN   TestCSRFAndInvalidInput
+--- PASS: TestCSRFAndInvalidInput (0.01s)
+=== RUN   TestStreamingLimitsAndAbortCleanup
+    app_test.go:301: stream proof: 3145728 bytes, maximum reader buffer 32768 bytes, temp file observed before EOF
+--- PASS: TestStreamingLimitsAndAbortCleanup (0.03s)
+=== RUN   TestRestartPersistenceAndPendingDeletionRecovery
+--- PASS: TestRestartPersistenceAndPendingDeletionRecovery (0.01s)
+=== RUN   TestCookieOriginConfiguration
+--- PASS: TestCookieOriginConfiguration (0.01s)
+=== RUN   TestAutomaticUploadRequestIdempotenceRestartOwnershipAndReceipt
+--- PASS: TestAutomaticUploadRequestIdempotenceRestartOwnershipAndReceipt (0.02s)
+=== RUN   TestAutomaticUploadRequestCancelExpiryAndAccountCleanup
+--- PASS: TestAutomaticUploadRequestCancelExpiryAndAccountCleanup (0.01s)
+=== RUN   TestBackupMinIOReconcileRedirectCookieIsolation
+    backup_minio_test.go:83: real MinIO migrated version reconciled by streamed hash; same-host/different-port object gateway received no NetDisk session cookie PASS
+--- PASS: TestBackupMinIOReconcileRedirectCookieIsolation (0.24s)
+=== RUN   TestBackupWatcherNewModifiedRestartDeletionDedupeMappingAndBoundary
+    backup_test.go:135: real HTTP watcher: initial 3 files; new+modified; unchanged restart; local delete retained 5 cloud files; dedupe+path+symlink boundary PASS
+--- PASS: TestBackupWatcherNewModifiedRestartDeletionDedupeMappingAndBoundary (0.07s)
+=== RUN   TestBackupPartFailureIsolationResumeAndBackendRestart
+    backup_test.go:187: real HTTP controlled 503: healthy file completed; saved part skipped after client+backend restart; bounded concurrency PASS
+--- PASS: TestBackupPartFailureIsolationResumeAndBackendRestart (0.04s)
+=== RUN   TestBackupLostCompletionExpiredReceiptAndIdentity
+    backup_test.go:242: committed response loss + expired receipt reconciled by remote hash without another upload; state identity isolation PASS
+--- PASS: TestBackupLostCompletionExpiredReceiptAndIdentity (0.03s)
+=== RUN   TestBackupPersistentRetryCeilingAndExplicitRecovery
+    backup_test.go:300: persistent retry ceiling, explicit retry and changed-content budget reset; versions retained; corrupt state refused PASS
+--- PASS: TestBackupPersistentRetryCeilingAndExplicitRecovery (0.04s)
+=== RUN   TestBackupPendingSourceChangeCancelsOnlyOwnSession
+    backup_test.go:342: changed source cancelled only its incomplete session, released quota, published new version; cross-user download rejected PASS
+--- PASS: TestBackupPendingSourceChangeCancelsOnlyOwnSession (0.03s)
+=== RUN   TestBackupSourceChangesDuringPartUploadNeverPublishesMixedVersion
+    backup_test.go:385: in-place change during real part request: mixed digest rejected before publish; subsequent stable version recovered PASS
+--- PASS: TestBackupSourceChangesDuringPartUploadNeverPublishesMixedVersion (0.03s)
+=== RUN   TestBackupSessionRefreshAndTamperedCancelStateRejected
+    backup_test.go:428: expired Session re-login and retry succeeded; malicious cancellation path rejected before remote mutation PASS
+--- PASS: TestBackupSessionRefreshAndTamperedCancelStateRejected (0.02s)
+=== RUN   TestEmailCodeExpirySingleUsePasswordAndSessionInvalidation
+--- PASS: TestEmailCodeExpirySingleUsePasswordAndSessionInvalidation (0.02s)
+=== RUN   TestStatsQuotaReservationsDedupAndRecovery
+--- PASS: TestStatsQuotaReservationsDedupAndRecovery (0.02s)
+=== RUN   TestShareAnalyticsOwnershipRetentionAndPolicyCandidates
+--- PASS: TestShareAnalyticsOwnershipRetentionAndPolicyCandidates (0.02s)
+=== RUN   TestP2PTwoClientsDirectTLSHashIsolationRevocation
+    extensions_test.go:233: direct TLS peers: 1048576 bytes; signaling response: 257 bytes; hash matched
+--- PASS: TestP2PTwoClientsDirectTLSHashIsolationRevocation (0.05s)
+=== RUN   TestP2PRejectsCorruptHashAndWrongTLSIdentity
+=== RUN   TestP2PRejectsCorruptHashAndWrongTLSIdentity/hash
+=== RUN   TestP2PRejectsCorruptHashAndWrongTLSIdentity/fingerprint
+=== RUN   TestP2PRejectsCorruptHashAndWrongTLSIdentity/token
+--- PASS: TestP2PRejectsCorruptHashAndWrongTLSIdentity (0.03s)
+    --- PASS: TestP2PRejectsCorruptHashAndWrongTLSIdentity/hash (0.01s)
+    --- PASS: TestP2PRejectsCorruptHashAndWrongTLSIdentity/fingerprint (0.01s)
+    --- PASS: TestP2PRejectsCorruptHashAndWrongTLSIdentity/token (0.01s)
+=== RUN   TestFolderOperationsIsolationAndCycles
+--- PASS: TestFolderOperationsIsolationAndCycles (0.02s)
+=== RUN   TestConcurrentFolderMovesCannotFormCycle
+--- PASS: TestConcurrentFolderMovesCannotFormCycle (0.01s)
+=== RUN   TestLegacyMigrationAndFolderRestart
+--- PASS: TestLegacyMigrationAndFolderRestart (0.02s)
+=== RUN   TestAdvancedMigrationRollbackPreservesLegacyContent
+=== RUN   TestAdvancedMigrationRollbackPreservesLegacyContent/size-mismatch
+=== RUN   TestAdvancedMigrationRollbackPreservesLegacyContent/missing-content
+--- PASS: TestAdvancedMigrationRollbackPreservesLegacyContent (0.01s)
+    --- PASS: TestAdvancedMigrationRollbackPreservesLegacyContent/size-mismatch (0.00s)
+    --- PASS: TestAdvancedMigrationRollbackPreservesLegacyContent/missing-content (0.00s)
+=== RUN   TestPendingReferenceCleanupRecovery
+--- PASS: TestPendingReferenceCleanupRecovery (0.01s)
+=== RUN   TestNFSReplacementQuotaAttributesChrootAndAccountDeletion
+--- PASS: TestNFSReplacementQuotaAttributesChrootAndAccountDeletion (0.02s)
+=== RUN   TestNFSRealProtocolLogicalReadWriteDirectoriesIsolationRevocation
+    nfs_test.go:129: real Linux TCP NFSv3 MOUNT/READ/WRITE/READDIR/MKDIR/RENAME/REMOVE/RMDIR PASS; logical metadata and dedupe verified
+--- PASS: TestNFSRealProtocolLogicalReadWriteDirectoriesIsolationRevocation (0.06s)
+=== RUN   TestNFSKernelMount
+    nfs_test.go:133: NOT_RUN: opt-in isolated Linux kernel mount
+--- SKIP: TestNFSKernelMount (0.00s)
+=== RUN   TestObjectRedirectDoesNotReadBodyAndMigrationFailure
+--- PASS: TestObjectRedirectDoesNotReadBodyAndMigrationFailure (0.63s)
+=== RUN   TestMinIOMigrationRedirectRangeDeletionAndObjectZIP
+    object_storage_test.go:268: {"direct_hash":true,"direct_range":true,"last_object_removed":true,"local_removed":true,"metadata_switch":true,"object_zip":true,"redirect_only":true,"shared_reference_survived":true}
+--- PASS: TestMinIOMigrationRedirectRangeDeletionAndObjectZIP (0.04s)
+=== RUN   TestSelectionZIPContentsDuplicatesRangeOwnershipAndInvalidation
+--- PASS: TestSelectionZIPContentsDuplicatesRangeOwnershipAndInvalidation (0.02s)
+=== RUN   TestSelectionRecursiveDeleteIsolationDedupeChunksAndSharing
+--- PASS: TestSelectionRecursiveDeleteIsolationDedupeChunksAndSharing (0.01s)
+=== RUN   TestSelectionRecursiveDeleteCleanupFailureIsDurable
+--- PASS: TestSelectionRecursiveDeleteCleanupFailureIsDurable (0.01s)
+=== RUN   TestBundledWebAndPolicyIsolation
+--- PASS: TestBundledWebAndPolicyIsolation (0.00s)
+=== RUN   TestBatchUploadWebAssets
+--- PASS: TestBatchUploadWebAssets (0.00s)
+PASS
+ok  	bingyan-netdisk/internal/netdisk	1.783s
+?   	bingyan-netdisk/internal/peer	[no test files]
+UNIFIED_FORMAT_TEST_VET_LINUX_WINDOWS_BUILD=PASS

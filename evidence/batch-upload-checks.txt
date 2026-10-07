@@ -1,0 +1,191 @@
+TASK=NETDISK_BATCH_UPLOAD
+DATE=2026-10-03 Asia/Shanghai
+BRANCH=feature/full-netdisk-task
+BASELINE=3250d421f436e992a95a0fb1998e9d861f9713cc
+ORDINARY_UPLOAD_MULTIPLE=PASS
+SINGLE_FILE_API_REUSED=PASS original raw-body POST /api/files and CSRF header
+MAX_CONCURRENCY=PASS 3, unit and real browser observed
+PER_FILE_STATES=PASS waiting/uploading/success/failed and individual errors
+PARTIAL_FAILURE_CONTINUES=PASS unit rejected request and actual browser HTTP 400
+OVERSIZE_SKIPPED_WITHOUT_REQUEST=PASS unit and actual browser
+PROGRESS_COUNTS=PASS all terminal outcomes include skipped; 3/3 and 5/5
+REFRESH_CURRENT_DIRECTORY_AFTER_ALL=PASS
+DUPLICATE_SUBMISSION_GUARD=PASS unit and two same-tick real DOM submissions; exactly 3 POSTs
+CHUNK_ENTRY_SINGLE_SELECTION=explicitly required, chunk API unchanged
+NODE_BEHAVIOR_TESTS=PASS 5 top-level tests, built-in Node only
+GO_TARGETED=PASS web assets/CSP, original lifecycle and streaming limits
+GOFMT=PASS clean
+GO_TEST=PASS go test -buildvcs=false -count=1 ./...
+GO_VET=PASS go vet ./...
+BUILD=PASS
+OPTIONAL_MINIO_AND_KERNEL_MOUNT_IN_THIS_BATCH_RUN=NOT_RUN environment not enabled; backend protocols unchanged
+BROWSER_THREE_FILE_SMOKE=PASS 4096/6144/12288 bytes; 3 real POST 201; per-file success; current folder refreshed; real download hashes match
+BROWSER_MIXED_SMOKE=PASS 5 selected; 3 success, 1 actual HTTP 400, 1 oversize skipped with no request; waiting observed; 4 POSTs; progress 5/5; directory adds 3
+FIRST_MIXED_FIXTURE_ASSUMPTION=corrected: 90 Unicode runes are a valid filename; used leading whitespace to exercise actual HTTP 400; no server validation changes
+BROWSER_JS_ERRORS=EMPTY
+SCREENSHOT=evidence/batch-upload-smoke.png; visually reviewed synthetic names, no credentials or capability
+ISOLATION=only new bingyan-netdisk-full-batch-smoke, 64 MiB /data tmpfs, localhost 38127, project binary read-only; no data volume
+CLEANUP=PASS own browser closed, own container removed; --rm tools removed; no test volume created
+LIVE_DATA_TOUCHED=NO
+BACKGROUND_CODEX_EXEC=0
+OPEN_CODE_CALLS=0
+DEEPSEEK_CALLS=0
+SUBAGENTS=0
+GIT_COMMIT_PUSH=NONE in this batch task
+GIT_STAGE=EMPTY
+RESULT=PASS
+BLOCKERS=NONE
+RAW_OUTPUT:
+✔ queue caps concurrency at three, continues after failures and reports every transition (7.1958ms)
+✔ oversize files are skipped without a request; equality and empty files are allowed (2.112ms)
+✔ all skipped, empty selection and unknown limits cannot send requests (5.4695ms)
+✔ real submit handler rejects duplicates, uses the single-file API and refreshes only after settling (5.3862ms)
+✔ real submit handler skips every oversize file, refreshes and clears private results on logout (2.0433ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 185.9625
+
+time="2026-10-03T16:24:24+08:00" level=warning msg="volume \"bingyan-netdisk-gomod\" already exists but was not created by Docker Compose. Use `external: true` to use an existing volume"
+time="2026-10-03T16:24:24+08:00" level=warning msg="volume \"bingyan-netdisk-gocache\" already exists but was not created by Docker Compose. Use `external: true` to use an existing volume"
+ Container bingyan-netdisk-full-batch-target Creating
+ Container bingyan-netdisk-full-batch-target Created
+=== RUN   TestFileLifecycleAndOwnership
+--- PASS: TestFileLifecycleAndOwnership (0.07s)
+=== RUN   TestStreamingLimitsAndAbortCleanup
+    app_test.go:301: stream proof: 3145728 bytes, maximum reader buffer 32768 bytes, temp file observed before EOF
+--- PASS: TestStreamingLimitsAndAbortCleanup (0.07s)
+=== RUN   TestBundledWebAndPolicyIsolation
+--- PASS: TestBundledWebAndPolicyIsolation (0.03s)
+=== RUN   TestBatchUploadWebAssets
+--- PASS: TestBatchUploadWebAssets (0.03s)
+PASS
+ok  	bingyan-netdisk/internal/netdisk	0.206s
+
+time="2026-10-03T16:25:25+08:00" level=warning msg="volume \"bingyan-netdisk-gomod\" already exists but was not created by Docker Compose. Use `external: true` to use an existing volume"
+time="2026-10-03T16:25:25+08:00" level=warning msg="volume \"bingyan-netdisk-gocache\" already exists but was not created by Docker Compose. Use `external: true` to use an existing volume"
+ Container bingyan-netdisk-full-batch-final Creating
+ Container bingyan-netdisk-full-batch-final Created
+GOFMT=PASS
+?   	bingyan-netdisk/cmd/netdisk	[no test files]
+?   	bingyan-netdisk/cmd/netdisk-p2p	[no test files]
+ok  	bingyan-netdisk/internal/netdisk	2.548s
+?   	bingyan-netdisk/internal/peer	[no test files]
+GO_TEST=PASS
+GO_VET=PASS
+BUILD=PASS
+
+{
+  "duplicateSubmission": "blocked",
+  "files": 3,
+  "hashes": [
+    {
+      "bytes": 4096,
+      "name": "batch-one.txt",
+      "sha256": "f01eef7433c1e1bdb450b959f4310c1175958178e1e983770d98840b3c24d939"
+    },
+    {
+      "bytes": 6144,
+      "name": "batch-two.bin",
+      "sha256": "a879132a3b6f71febddaa7995471797da5fc8d9ad6e24a93a9750b2919068004"
+    },
+    {
+      "bytes": 12288,
+      "name": "batch-three.bin",
+      "sha256": "dcc1dea8a10a84191a9710fc38e5046cbf4b14b9d7ad83f8d28a963e12637ad2"
+    }
+  ],
+  "peak": 3,
+  "progress": "已完成 3/总数 3",
+  "refreshedDirectory": "batch_target",
+  "requests": [
+    {
+      "name": "batch-one.txt",
+      "status": 201
+    },
+    {
+      "name": "batch-two.bin",
+      "status": 201
+    },
+    {
+      "name": "batch-three.bin",
+      "status": 201
+    }
+  ],
+  "smoke": "PASS",
+  "statuses": [
+    "success",
+    "success",
+    "success"
+  ]
+}
+
+{
+  "completed": 5,
+  "directoryAddedFiles": 3,
+  "failed": 2,
+  "finalStatuses": [
+    "failed",
+    "success",
+    "success",
+    "success",
+    "failed"
+  ],
+  "mixedSmoke": "PASS",
+  "peak": 3,
+  "progress": "已完成 5/总数 5",
+  "requests": [
+    {
+      "name": " invalid-name.txt",
+      "status": 400
+    },
+    {
+      "name": "next-seven.txt",
+      "status": 201
+    },
+    {
+      "name": "next-eight.txt",
+      "status": 201
+    },
+    {
+      "name": "next-nine.txt",
+      "status": 201
+    }
+  ],
+  "skipped": 1,
+  "success": 3,
+  "total": 5,
+  "waitingObserved": true
+}
+
+BROWSER_JS_ERRORS=EMPTY
+
+
+RUNNING_VERSION_FOLLOWUP
+USER_REPORTED_URL=http://127.0.0.1:38120/
+DIAGNOSIS=old service command /workspace/bin/netdisk; project bin/netdisk timestamp 2026-10-01 20:36:50; screenshot matches old controls
+OLD_SERVICE_DATA_ACCESS=NONE mount metadata only; no HTTP request/restart/binary overwrite
+USER_DEMO_URL=http://127.0.0.1:38125/
+USER_DEMO_CONTAINER=bingyan-netdisk-full-demo
+USER_DEMO_DATA=bingyan-netdisk-full-demo-data; explicitly verified absent before startup, newly created; no live volume
+START=PASS scripts/full-demo.ps1 built current source and started independent demo
+UI_HINT=Ctrl or Shift multiple selection, 100 MiB per file
+NODE_TESTS_RECHECK=PASS 5
+RUNNING_DEMO_BROWSER=PASS native input multiple=true, three real files uploaded, 3/3 and three successes, hint present, JS errors empty
+SYNTHETIC_CHECK_CLEANUP=PASS only own newly registered check account/files removed; browser closed
+DEMO_RETENTION=running for user review; independent data starts empty, users register separately
+LIVE_DATA_TOUCHED=NO
+GIT_COMMIT_PUSH=NONE
+RUNNING_DEMO_RAW_OUTPUT:
+{
+  "hint": "可多选文件（按住 Ctrl 或 Shift），单文件不超过 100 MiB。",
+  "multiple": true,
+  "progress": "已完成 3/总数 3",
+  "realBrowserSmoke": "PASS",
+  "successfulFiles": 3,
+  "url": "http://127.0.0.1:38125"
+}

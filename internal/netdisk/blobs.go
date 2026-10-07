@@ -253,6 +253,9 @@ func (a *App) publishReplacing(ctx context.Context, owner int64, name, folder st
 		_, err = tx.ExecContext(ctx, `UPDATE blobs SET ref_count=ref_count+1 WHERE id=?`, blobID)
 	}
 	if err == nil && len(sessionIDs) > 0 {
+		_, err = tx.ExecContext(ctx, `UPDATE upload_requests SET file_id=? WHERE session_id=? AND user_id=?`, f.ID, sessionIDs[0], owner)
+	}
+	if err == nil && len(sessionIDs) > 0 {
 		_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO temp_cleanup SELECT storage_key FROM upload_parts WHERE session_id=?`, sessionIDs[0])
 		if err == nil {
 			_, err = tx.ExecContext(ctx, `DELETE FROM upload_sessions WHERE id=? AND user_id=?`, sessionIDs[0], owner)

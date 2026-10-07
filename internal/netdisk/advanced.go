@@ -17,6 +17,7 @@ func (a *App) advancedRoutes(m *http.ServeMux) {
 		"POST /api/uploads": a.createUpload, "GET /api/uploads/{id}": a.uploadStatus,
 		"PUT /api/uploads/{id}/parts/{index}": a.uploadPart, "POST /api/uploads/{id}/complete": a.completeUpload, "DELETE /api/uploads/{id}": a.cancelUpload,
 		"GET /api/folders/{id}/download": a.folderZIP, "POST /api/files/{id}/migrate-s3": a.migrateObject,
+		"GET /api/download-selection": a.selectionZIP, "DELETE /api/folders/{id}/tree": a.deleteFolderTree,
 	} {
 		m.Handle(pattern, a.auth(h))
 	}
@@ -400,6 +401,9 @@ func (a *App) cleanupLocked(now time.Time) error {
 	_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO temp_cleanup SELECT storage_key FROM upload_parts WHERE session_id IN (SELECT id FROM upload_sessions WHERE expires_at<=?)`, now.Unix())
 	if err == nil {
 		_, err = tx.ExecContext(ctx, `DELETE FROM upload_sessions WHERE expires_at<=?`, now.Unix())
+	}
+	if err == nil {
+		_, err = tx.ExecContext(ctx, `DELETE FROM upload_requests WHERE expires_at<=? OR (file_id IS NULL AND NOT EXISTS (SELECT 1 FROM upload_sessions s WHERE s.id=upload_requests.session_id))`, now.Unix())
 	}
 	if err == nil {
 		_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO temp_cleanup SELECT storage_key FROM zip_cache WHERE expires_at<=?`, now.Unix())

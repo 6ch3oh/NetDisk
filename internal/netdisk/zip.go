@@ -193,10 +193,15 @@ func (a *App) folderZIP(w http.ResponseWriter, r *http.Request) {
 		folderError(w, err)
 		return
 	}
+	a.serveZIP(w, r, snapshot, folder.Name+".zip")
+}
+
+func (a *App) serveZIP(w http.ResponseWriter, r *http.Request, snapshot zipSnapshot, filename string) {
+	ctx, owner, root := r.Context(), snapshot.Owner, snapshot.Root
 	cacheKey := fingerprint(snapshot)
 	var key string
 	var expires int64
-	err = a.db.QueryRowContext(ctx, `SELECT storage_key,expires_at FROM zip_cache WHERE cache_key=? AND user_id=?`, cacheKey, owner).Scan(&key, &expires)
+	err := a.db.QueryRowContext(ctx, `SELECT storage_key,expires_at FROM zip_cache WHERE cache_key=? AND user_id=?`, cacheKey, owner).Scan(&key, &expires)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		fileError(w, err)
 		return
@@ -259,6 +264,6 @@ func (a *App) folderZIP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer source.Close()
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": folder.Name + ".zip"}))
-	http.ServeContent(w, r, folder.Name+".zip", time.Time{}, source)
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+	http.ServeContent(w, r, filename, time.Time{}, source)
 }

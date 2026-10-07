@@ -1,0 +1,76 @@
+TASK=NETDISK-ORDINARY-UPLOAD-AUTOMATIC-CHUNKS
+DATE=2026-10-03
+PROJECT=E:/冰岩实习/NetDisk
+BRANCH=feature/full-netdisk-task
+HEAD=3250d421f436e992a95a0fb1998e9d861f9713cc (unchanged)
+Only visible Codex thread; no background Codex, subagents, goals or external models.
+
+POLICY=PASS
+Manual resume panel/ID/button removed. input.multiple=true.
+Backend config: chunk_threshold_bytes=300000000, chunk_part_bytes=8388608.
+Exactly 300000000 uses ordinary POST; greater uses chunks.
+Default max_upload_bytes=1073741824; existing per-account quota/reservation enforced.
+Existing batch queue: at most 3 files; per-file chunks sequential; oversize zero requests.
+
+TARGETED_GO=PASS
+AutomaticUploadRequestIdempotenceRestartOwnershipAndReceipt
+AutomaticUploadRequestCancelExpiryAndAccountCleanup
+ResumableRestartIdempotenceIsolationCompleteDedup, UploadCancelExpiryAndCorruptPart
+BatchUploadWebAssets, BundledWebAndPolicyIsolation
+All business fixtures use t.TempDir; no live volume.
+
+NODE=PASS (10 tests)
+node --test scripts/batch-upload.test.cjs scripts/automatic-upload.test.cjs
+node --check internal/netdisk/web/app.js
+node --check internal/netdisk/web/upload-queue.js
+Includes retries of lost create/part/complete responses, reload/skip, changed source rejection,
+durable receipt, storage disabled fallback; existing queue/API/CSRF/duplicate/skip tests.
+
+FINAL_TOOLCHAIN=golang:1.27.0, tools service, --no-deps, no live mount
+GOFMT=PASS (test -z "$(gofmt -l cmd internal)")
+GO_TEST=PASS (go test -count=1 ./..., internal/netdisk 2.672s)
+GO_VET=PASS (go vet ./...)
+BUILD=PASS (go build -buildvcs=false -trimpath, cmd/netdisk and cmd/netdisk-p2p)
+MINIO_OPT_IN=NOT_RUN in this incremental task
+NFS_KERNEL_OPT_IN=NOT_RUN in this incremental task
+Previous full-requirements evidence remains historical; not claimed rerun here.
+
+BROWSER_REAL=PASS, agent-browser Chromium, only http://127.0.0.1:38128/
+New container bingyan-netdisk-full-auto-smoke, /data 1.5GiB tmpfs, no Docker data volume.
+Synthetic source automatic-large.bin=300000001 bytes
+SOURCE_SHA256=d0f09d7e0d22417c8d874edebf01b6e9c2b1a34e90d137843ebfd3696154fafe
+Interrupted batch: create201, part0=8388608/201; part1 aborted 3 times.
+Two ordinary small files 31/33 bytes still POST201; terminal 3/3, 1 failed/2 success.
+Refresh page + reselect identical file: preserved internal session; part0 NOT resent;
+parts1..35=201 (35 PUTs), last6398721 bytes; complete201, 1/1 success, cache cleared.
+No response bodies mocked; abort was intentional fault injection only.
+Fresh normal 3-file batch: create201 once; small POST201 twice (31/33 bytes);
+large PUT201 36 times (index0..35), complete201 once; peak3; duplicate submit blocked.
+Final status=已完成 3/总数 3; three success; refreshed current directory; cache0.
+Download SHA-256 over real authenticated HTTP stream=SOURCE_SHA256, PASS.
+Raw test cookie held only in memory, not emitted or written to evidence.
+Browser full-arrayBuffer hash CLI returned EOF; NOT counted as verification.
+JS_ERRORS=NONE; intentional network abort produced expected request failures.
+SCREENSHOT=evidence/automatic-upload-smoke.png, visually reviewed synthetic data only.
+Own browser closed and own tmpfs container removed after identity/mount check.
+
+DEMO_UPDATE=38125 independent demo only; old own container identity and mounts verified.
+Preserved bingyan-netdisk-full-demo-data; never removed/reset/recreated its volume.
+Updated binary bind=.tmp/full-auto (tested build), previous .tmp/full-demo retained.
+Old 38120 app/bin/live volume left unchanged, no HTTP requests sent there.
+DEMO_POST_UPDATE_SMOKE=PASS, real browser http://127.0.0.1:38125/
+Newly registered synthetic account autodemoverify20261003; normal 3-file batch successful.
+Actual policy matches 300000000/8388608/1073741824; multiple=true; manualPanel=false.
+Final 3/3 and three refreshed directory files; JS errors empty.
+Verified exact synthetic username before DELETE /api/me (204); only this new check account
+and its synthetic files removed. Own browser closed; updated demo remains running.
+GIT_STATUS=15 modified tracked files, 8 untracked source/tests/evidence files; index empty.
+BLOCKERS=NONE for this request; same-tab reselection required after refresh.
+NEXT_SINGLE_STEP=Open http://127.0.0.1:38125/ and refresh to use the unified uploader.
+
+LIVE_DATA_TOUCHED=NO
+OPEN_CODE_CALLS=0
+DEEPSEEK_CALLS=0
+BACKGROUND_CODEX_CALLS=0
+SUBAGENTS=0
+COMMIT=NO; PUSH=NO; RESET/CLEAN=NO; GLOBAL_CONFIG=NO; ORIGINAL_INDEX=PRESERVED

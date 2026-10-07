@@ -16,6 +16,9 @@ import (
 	"time"
 )
 
+const automaticChunkThreshold int64 = 300_000_000 // MB uses decimal bytes.
+const automaticChunkPartSize int64 = 8 << 20
+
 type UploadSession struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
@@ -23,6 +26,7 @@ type UploadSession struct {
 	ExpectedSize int64  `json:"expected_size"`
 	PartSize     int64  `json:"part_size"`
 	ExpiresAt    int64  `json:"expires_at"`
+	File         *File  `json:"file,omitempty"`
 }
 type UploadPart struct {
 	Index int64  `json:"index"`
@@ -44,10 +48,11 @@ func (a *App) session(ctx context.Context, owner int64, id string) (UploadSessio
 }
 func (a *App) createUpload(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name     string `json:"name"`
-		FolderID string `json:"folder_id"`
-		Size     int64  `json:"expected_size"`
-		PartSize int64  `json:"part_size"`
+		Name       string `json:"name"`
+		FolderID   string `json:"folder_id"`
+		Size       int64  `json:"expected_size"`
+		PartSize   int64  `json:"part_size"`
+		RequestKey string `json:"request_key"`
 	}
 	if !decode(w, r, &body) {
 		return
@@ -55,6 +60,36 @@ func (a *App) createUpload(w http.ResponseWriter, r *http.Request) {
 	if !validName(body.Name) || body.Size < 0 || body.Size > a.cfg.MaxUploadBytes || body.PartSize <= 0 || body.PartSize > 8<<20 {
 		fail(w, 400, "invalid upload session; part_size must be 1..8388608")
 		return
+	}
+	owner := current(r).user.ID
+	if body.RequestKey != "" {
+		if !keyPattern.MatchString(body.RequestKey) {
+			fail(w, 400, "invalid upload request key")
+			return
+		}
+		var previous UploadSession
+		var fileID string
+		err := a.db.QueryRowContext(r.Context(), `SELECT session_id,name,folder_id,expected_size,part_size,expires_at,COALESCE(file_id,'') FROM upload_requests WHERE user_id=? AND request_key=? AND expires_at>?`, owner, body.RequestKey, time.Now().Unix()).Scan(&previous.ID, &previous.Name, &previous.FolderID, &previous.ExpectedSize, &previous.PartSize, &previous.ExpiresAt, &fileID)
+		if err == nil {
+			if previous.Name != body.Name || previous.FolderID != body.FolderID || previous.ExpectedSize != body.Size || previous.PartSize != body.PartSize {
+				fail(w, 409, "upload request key reused for different file")
+				return
+			}
+			if fileID != "" {
+				f, e := a.completedUpload(r.Context(), owner, previous.ID)
+				if e != nil {
+					fileError(w, e)
+					return
+				}
+				previous.File = &f
+			}
+			respond(w, 201, previous)
+			return
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			fileError(w, err)
+			return
+		}
 	}
 	// Bound metadata growth even for a one-byte part size.
 	if body.Size/body.PartSize > 10000 {
@@ -74,8 +109,23 @@ func (a *App) createUpload(w http.ResponseWriter, r *http.Request) {
 		fileError(w, err)
 		return
 	}
-	s := UploadSession{id, body.Name, body.FolderID, body.Size, body.PartSize, time.Now().Add(24 * time.Hour).Unix()}
-	_, err = a.db.ExecContext(r.Context(), `INSERT INTO upload_sessions(id,user_id,name,folder_id,expected_size,part_size,expires_at) VALUES(?,?,?,?,?,?,?)`, id, current(r).user.ID, s.Name, nullableID(s.FolderID), s.ExpectedSize, s.PartSize, s.ExpiresAt)
+	s := UploadSession{ID: id, Name: body.Name, FolderID: body.FolderID, ExpectedSize: body.Size, PartSize: body.PartSize, ExpiresAt: time.Now().Add(24 * time.Hour).Unix()}
+	tx, err := a.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		fileError(w, err)
+		return
+	}
+	defer tx.Rollback()
+	_, err = tx.ExecContext(r.Context(), `INSERT INTO upload_sessions(id,user_id,name,folder_id,expected_size,part_size,expires_at) VALUES(?,?,?,?,?,?,?)`, id, owner, s.Name, nullableID(s.FolderID), s.ExpectedSize, s.PartSize, s.ExpiresAt)
+	if err == nil && body.RequestKey != "" {
+		_, err = tx.ExecContext(r.Context(), `DELETE FROM upload_requests WHERE user_id=? AND request_key=? AND expires_at<=?`, owner, body.RequestKey, time.Now().Unix())
+		if err == nil {
+			_, err = tx.ExecContext(r.Context(), `INSERT INTO upload_requests(user_id,request_key,session_id,name,folder_id,expected_size,part_size,expires_at) VALUES(?,?,?,?,?,?,?,?)`, owner, body.RequestKey, id, s.Name, s.FolderID, s.ExpectedSize, s.PartSize, s.ExpiresAt)
+		}
+	}
+	if err == nil {
+		err = tx.Commit()
+	}
 	if err != nil {
 		fileError(w, err)
 		return
@@ -201,6 +251,15 @@ func (a *App) completeUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	owner := current(r).user.ID
 	s, err := a.session(ctx, owner, r.PathValue("id"))
+	if errors.Is(err, missingUpload) {
+		if f, e := a.completedUpload(ctx, owner, r.PathValue("id")); e == nil {
+			respond(w, 201, f)
+			return
+		} else if !errors.Is(e, sql.ErrNoRows) {
+			fileError(w, e)
+			return
+		}
+	}
 	if err != nil {
 		folderError(w, err)
 		return
@@ -261,6 +320,15 @@ func (a *App) completeUpload(w http.ResponseWriter, r *http.Request) {
 	_ = a.cleanupKeys(ctx, "temp_cleanup", a.temp)
 	respond(w, 201, f)
 }
+
+// Publish and the completion receipt commit in the same transaction. A response
+// lost after publication can be retried without creating another logical file.
+func (a *App) completedUpload(ctx context.Context, owner int64, sessionID string) (File, error) {
+	var f File
+	err := a.db.QueryRowContext(ctx, `SELECT f.id,f.name,f.size,f.created_at,COALESCE(f.folder_id,'') FROM upload_requests u JOIN files f ON u.file_id=f.id WHERE u.session_id=? AND u.user_id=? AND f.user_id=? AND f.deleted=0 AND u.expires_at>?`, sessionID, owner, owner, time.Now().Unix()).Scan(&f.ID, &f.Name, &f.Size, &f.CreatedAt, &f.FolderID)
+	link(&f)
+	return f, err
+}
 func (a *App) cancelUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	s, err := a.session(ctx, current(r).user.ID, r.PathValue("id"))
@@ -275,6 +343,9 @@ func (a *App) cancelUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 	_, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO temp_cleanup SELECT storage_key FROM upload_parts WHERE session_id=?`, s.ID)
+	if err == nil {
+		_, err = tx.ExecContext(ctx, `DELETE FROM upload_requests WHERE session_id=? AND user_id=? AND file_id IS NULL`, s.ID, current(r).user.ID)
+	}
 	if err == nil {
 		_, err = tx.ExecContext(ctx, `DELETE FROM upload_sessions WHERE id=?`, s.ID)
 	}

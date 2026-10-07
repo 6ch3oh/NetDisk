@@ -149,6 +149,10 @@ CREATE INDEX IF NOT EXISTS files_owner ON files(user_id,deleted);`)
 		a.db.Close()
 		return nil, err
 	}
+	if err = a.migrateArchives(); err != nil {
+		a.db.Close()
+		return nil, err
+	}
 	if cfg.S3 != nil {
 		a.store, err = newObjectStore(*cfg.S3)
 		if err != nil {
@@ -180,6 +184,7 @@ func (a *App) Handler() http.Handler {
 	a.extensionRoutes(m)
 	a.nfsRoutes(m)
 	a.p2pRoutes(m)
+	a.archiveRoutes(m)
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.db.PingContext(r.Context()); err != nil {
 			fail(w, 503, "unavailable")

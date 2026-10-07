@@ -1,0 +1,123 @@
+TASK=BINGYAN-NETDISK-FINAL-CLOSEOUT-001
+RESULT=BLOCKED
+FINAL_COMMIT=NOT_CREATED
+FEATURE_HEAD=3250d421f436e992a95a0fb1998e9d861f9713cc
+LOCAL_MAIN=f04850f7a2149a37dee4fc2a8772ec51eba00dcc
+ORIGIN_MAIN=73251fe334f9cf270942be46fd2f97c56af330a1
+MAIN_EQUALS_ORIGIN_MAIN=NO
+FULL_REGRESSION=PASS on current working source and isolated data
+NODE_TESTS=PASS 18 behavioral tests plus real Windows sync CLI processes
+GOFMT=PASS empty output for all cmd/internal Go files
+GO_TEST=PASS go test -count=1 -v ./...; 42 top-level PASS; kernel opt-in run separately
+GO_VET=PASS
+BUILD=PASS Linux netdisk/netdisk-p2p/netdisk-sync and Windows netdisk-sync.exe
+MINIO=PASS real local server, object migration/Range/ZIP/deletion and sync redirect-cookie isolation
+NFS=PASS real TCP NFSv3 and current-source kernel mount/read/write/mkdir/rename/remove/rmdir
+P2P=PASS two independent CLI processes, 1048613 bytes with matching SHA256; TLS/authorization regression PASS
+BROWSER_SMOKE=PASS isolated tmpfs; register/login, directories, native 3-file selection/upload/download, select-all, ZIP download, batch sharing, profile update, logout/relogin
+BROWSER_AUTOMATIC_UPLOAD=PASS actual 300000001-byte synthetic file via ordinary input, 36 parts and complete downloaded bytes
+BROWSER_JS_ERRORS=NONE
+LIVE_BACKUP=PASS complete consistent tar with verified SHA256, private full-volume and metadata/blob manifests, ACL-restricted project .tmp
+COPY_RESTORE=PASS baseline exact manifest, integrity and foreign keys
+COPY_MIGRATION=FAIL exact physical blob manifest gate
+COPY_SQLITE_INTEGRITY=PASS
+COPY_SQLITE_FOREIGN_KEYS=PASS
+COPY_ORIGINAL_ACCOUNTS_AUTHENTICATION=PASS 12 account rows match; SQL compares hashes internally without selecting or printing them
+COPY_ORIGINAL_USER_METADATA=PASS
+COPY_ORIGINAL_FOLDER_METADATA=PASS
+COPY_ORIGINAL_LOGICAL_FILE_METADATA_HASH_SIZE=PASS
+COPY_ORIGINAL_HTTP_DOWNLOADS=PASS all 8 original copied files
+COPY_PHYSICAL_BLOBS_BEFORE=8
+COPY_PHYSICAL_BLOBS_AFTER=6
+COPY_REMOVED_LEGACY_DUPLICATE_PHYSICAL_COPIES=2
+COPY_REMOVED_COPY_CONTENT_AVAILABLE=YES canonical content hash/size equal
+COPY_RESTART=NOT_RUN stopped at failed acceptance gate
+LIVE_MIGRATION=NOT_RUN
+ORIGINAL_DATA_INTEGRITY=PASS final read-only live manifest equals baseline; users=12 files=8 folders=1 sessions=2 physical_blobs=8
+FORMAL_URL=http://127.0.0.1:38120/
+FORMAL_HEALTH=STOPPED same as task start
+SYNTHETIC_LIVE_SMOKE=NOT_RUN
+GITHUB_PUSH=NOT_RUN
+GIT_STAGE_COMMIT_MERGE=NOT_RUN
+WORKTREE=DIRTY_PRESERVED accepted source/tests/docs/evidence remain uncommitted; private backups ignored
+LIVE_DATA_DELETED=NO
+ORIGINAL_USER_FILES_MODIFIED=NO
+LIVE_VOLUME_RECREATED=NO
+FORMAL_BINARY_REPLACED=NO
+OPEN_CODE_CALLS=0
+DEEPSEEK_CALLS=0
+SUBAGENTS=0
+BACKGROUND_CODEX_EXEC=0
+BLOCKERS=Legacy advanced migration deduplicates equal-content legacy blobs and cleanup removes 2 old physical storage keys. This violates AGENTS.md exact pre/post blob manifest acceptance, despite unchanged logical files and readable content.
+
+AUDIT:
+- Current branch feature/full-netdisk-task; original index empty and kept unchanged.
+- 56 original changed/untracked candidate files reviewed as source/tests/docs/synthetic evidence. Temporary binaries/data/archives/caches are ignored; 5 new historical screenshots visually verified to contain synthetic data and no capabilities.
+- Sensitive-pattern scan of candidates found no session cookies, full share capabilities, signed object URLs, private keys or provider tokens. No git add . or staging performed.
+- GitHub has a README-only commit divergent from the feature branch. It was fetched and analyzed; no remote/config changes, history replacement or force push. A later authorized continuation must retain that commit in normal merge history.
+- Only bingyan-netdisk-app mounts the live volume; it was already stopped. Live backup/readchecks mounted it read-only.
+- All regression containers used t.TempDir/tmpfs or project tool/cache volumes, never the live volume.
+- Own tmpfs browser/peer server and own MinIO server stopped and removed. Failed copy app stopped; its new copy volume and private backup/diagnostic artifacts preserved.
+- Existing formal and 38125 demo containers remain stopped as found. Formal binary matches the private pre-closeout backup.
+- No stage/commit/main update/push/live schema migration performed after failed copy gate.
+NEXT_REQUIRED_ACTION=Resolve physical blob preservation versus the strict migration contract before a fresh isolated restore/migration/restart acceptance; any source fix requires corresponding current-source regression before Git/deployment.
+
+BRAND_STORAGE_FOLLOWUP_DATE=2026-10-07
+BRAND_SOURCE=PASS changed 5 UI occurrences to 佳琛网盘; README heading updated
+BRAND_EXISTING_WEB_TESTS=PASS TestBundledWebAndPolicyIsolation, TestBatchUploadWebAssets
+BRAND_BUILD=PASS current source Linux netdisk in ignored .tmp/brand-storage-20261007
+BRAND_ISOLATED_HTTP=PASS healthz=200 home=200 title correct new brand occurrences=5 old=0; fresh tmpfs, no live volume
+BRAND_SMOKE_CLEANUP=PASS own container stopped and removed
+CURRENT_FORMAL_APP=STOPPED
+CURRENT_FORMAL_DATA_VOLUME=bingyan-netdisk-data
+CURRENT_FORMAL_ENGINE_DATA_PATH=/var/lib/docker/volumes/bingyan-netdisk-data/_data
+CURRENT_FORMAL_CONTAINER_DATA_DIR=/data
+CURRENT_FORMAL_BLOB_DIR=/data/blobs
+CURRENT_FORMAL_SQLITE=/data/netdisk.db (WAL/SHM retained)
+CURRENT_FORMAL_TEMP=/data/tmp
+CURRENT_FORMAL_OBJECT_STORAGE=NOT_CONFIGURED local filesystem storage
+CURRENT_FORMAL_READONLY_INTEGRITY=PASS SQLite integrity/foreign keys; original metadata and all blob hash/size match private baseline
+CURRENT_FORMAL_COUNTS=users:12 files:8 folders:1 sessions:2 physical_blobs:8
+CURRENT_FORMAL_APPARENT_BYTES=volume:18420736 blobs:18227592 tmp:0 sqlite:57344 wal:103032 shm:32768
+CURRENT_DEMO_VOLUME=bingyan-netdisk-full-demo-data; stopped
+CURRENT_MIGRATION_COPY_VOLUME=bingyan-netdisk-final-copy-20261006; stopped
+CURRENT_PRIVATE_BACKUP=E:\冰岩实习\NetDisk\.tmp\final-closeout-20261006\live-volume-pre-closeout.tar; 18432000 bytes
+OTHER_PROJECT_PRIVATE_COPIES=.tmp/s2b-backup historical archive/SQLite; .tmp/full-a isolated SQLite; synthetic CLI state under .tmp/p1-cli-state-* and .tmp/p1-launch-state-*
+PROJECT_ROOT_DATA_UPLOADS_DIRS=ABSENT
+WINDOWS_HOST_VHDX_LOCATION=NOT_INSPECTED outside project resource scope
+BRAND_FORMAL_DEPLOYMENT=NOT_RUN copy migration gate remains BLOCKED
+BRAND_FORMAL_BINARY_UNCHANGED=PASS matches pre-closeout binary
+BRAND_STAGE_COMMIT_PUSH=NOT_RUN
+BRAND_LIVE_DATA_DELETED=NO
+BRAND_ORIGINAL_USER_FILES_MODIFIED=NO
+BRAND_OPEN_CODE_CALLS=0
+BRAND_BACKGROUND_CODEX_EXEC=0
+BRAND_SUBAGENTS=0
+
+REMOVABLE_BACKUP_FOLLOWUP_DATE=2026-10-07
+REMOVABLE_BACKUP_SCOPE=User requested software implementation first; hosting/traffic and formal closeout deferred
+REMOVABLE_BACKUP_RESULT=PASS_FEATURE_IMPLEMENTATION
+REMOVABLE_BACKUP_FEATURES=Download/resume/hash/version retention/disk guards/explicit archive/restore/history/new-server recovery/web archive records
+REMOVABLE_BACKUP_GO_NODE_BUILD=PASS current Go full tests/vet/gofmt; pull/archive race; 18 Node tests; Linux three binaries and Windows sync
+REMOVABLE_BACKUP_REAL_INTEGRATION=PASS MinIO/NFS kernel mount/P2P independent CLI/native Windows upload and download/browser
+REMOVABLE_BACKUP_DETAILS=evidence/removable-backup-checks.txt; docs/removable-backup.md; DEVLOG.md; TASKS.md
+REMOVABLE_BACKUP_FORMAL_DEPLOYMENT=NOT_RUN existing strict copy-migration gate remains BLOCKED
+REMOVABLE_BACKUP_FORMAL_BINARY=UNCHANGED
+REMOVABLE_BACKUP_LIVE_VOLUME=NOT_MOUNTED
+REMOVABLE_BACKUP_STAGE_COMMIT_PUSH=NOT_RUN
+REMOVABLE_BACKUP_LIVE_DATA_DELETED=NO
+REMOVABLE_BACKUP_ORIGINAL_USER_FILES_MODIFIED=NO
+REMOVABLE_BACKUP_OPEN_CODE_CALLS=0
+REMOVABLE_BACKUP_BACKGROUND_CODEX_EXEC=0
+REMOVABLE_BACKUP_SUBAGENTS=0
+
+GITHUB_SOURCE_UPDATE_DATE=2026-10-07
+GITHUB_SOURCE_UPDATE_AUTHORIZATION=User explicitly requested 更新GitHub after feature implementation and deferred formal closeout
+GITHUB_SOURCE_UPDATE_SCOPE=Accepted source/tests/docs/sanitized evidence publication; formal deployment and copy-migration gate remain deferred
+GITHUB_SOURCE_UPDATE_REMOTE_PRECHECK=73251fe334f9cf270942be46fd2f97c56af330a1 unchanged known README-only divergence
+GITHUB_SOURCE_UPDATE_HISTORY_POLICY=Normal merge preserving remote README commit; no force push; existing origin unchanged
+GITHUB_SOURCE_UPDATE_SOURCE_TESTS=Current source validation recorded in evidence/removable-backup-checks.txt; no later business-code edits
+GITHUB_SOURCE_UPDATE_EXCLUSIONS=Private backups/databases/user content/credentials/binaries/tmp/cache
+GITHUB_SOURCE_UPDATE_DEPLOYMENT=NOT_RUN
+GITHUB_SOURCE_UPDATE_LIVE_DATA_DELETED=NO
+GITHUB_SOURCE_UPDATE_ORIGINAL_USER_FILES_MODIFIED=NO

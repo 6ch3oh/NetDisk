@@ -1,4 +1,54 @@
-# 当前任务：Full Requirements 可见主线程
+# 当前任务：P1 多文件上传和单向备份
+
+
+## P1 多文件上传与单向备份（2026-10-06，未提交）
+
+TASK=BINGYAN-NETDISK-P1-MULTIUPLOAD-SYNC-V1。先接管 feature/full-netdisk-task 的全部现有未提交改动，独立回归再顺序收尾。MULTI_UPLOAD=PASS（浏览器原生 3 文件/下载、真实单项 400 + 2 成功，无 JS errors）；AUTO_SYNC=PASS（新增项目内 Go CLI/PowerShell 启动器，Windows 独立进程新增/修改/重启/锁/删除保留/5 版本摘要）。
+
+真实 HTTP/MinIO 同步新增 8 项和 race PASS；gofmt、42 项顶层 go test ./...、go vet ./...、Node 18 项、Windows/Linux 构建 PASS。已有 CRUD/隔离/分享/dedupe/Range/分片/MinIO/ZIP/TCP NFS/P2P 回归通过，可选 kernel NFS mount 本轮 NOT_RUN。
+
+默认单向保留版本、10 秒轮询、2 并发、8 MiB 分片和最多 5 次持久重试；只读取明确目录，无文件删除传播。详见 docs/automatic-backup.md、任务 TASK、REPORT 及 evidence/p1-checks.txt。业务后端/schema/前端本增量没有改动；当前源码及接管改动保留。无 commit/push/remote/live 卷操作，OpenCode/DeepSeek/子 Agent/后台 Codex=0。仅清理自己的本轮隔离资源，完成后停止。
+
+# 目录返回按钮阶段记录（未提交）
+
+- 目录标题下改为明确的浅蓝边框“← 返回上一级”按钮，保留可点击路径与根目录入口；根目录禁用返回按钮：PASS。
+- 目录、路径、上传目标在完整加载成功后一起切换；404/加载失败保留原目录与勾选，busy 防重复导航：PASS。
+- Node 行为测试 18 项（含新增 2 项导航测试）、gofmt clean、go test ./...、go vet ./...、构建：PASS。
+- 全新 64MiB tmpfs 真实浏览器三级逐级返回、祖先/根路径跳转、实际 404 后状态保持、390px 移动端：PASS；JS errors 为空。
+- 38125 独立 demo 已更新并通过新合成账号实际进入/返回验证；保留其数据卷，仅删除本轮新建检查账号。自己的 tmpfs 容器和测试浏览器已清理，旧 live 未触碰。
+- 不 commit/push，索引保留；证据：evidence/folder-navigation-checks.txt、evidence/folder-navigation-smoke.png。
+
+# 勾选与批量操作阶段记录（未提交）
+
+- 文件/目录勾选、当前目录全选/部分状态、数量、高亮、导航/退出清理：PASS。
+- 打包 ZIP 下载、独立分享、逐项重命名、同目标移动、确认递归删除：PASS。
+- 部分失败继续、失败选择保留、分享重试不重复成功项并保留已创建链接、防重复提交：PASS。
+- ZIP 内容/重叠去重/路径/所有权/Range/缓存失效与过期、递归删除 CSRF/隔离/dedupe/分片/分享/GC durable recovery：PASS。
+- 真实浏览器全部 5 种操作、ZIP 下载/哈希、真实 400、取消/确认删除、分享 200→404、实际 CSRF 403 后重试、390px 窄屏：PASS；JS errors 为空。
+- Node 16 项、Go 专项、gofmt clean、go test ./...、go vet ./...、构建：PASS。可选 MinIO/kernel NFS 本增量 NOT_RUN，历史完整阶段记录保留。
+- 38125 独立 demo 已更新且保留其数据；自己的 tmpfs/测试浏览器和本轮新建检查账号已清理；旧 live 未触碰。
+- 未提交/推送、索引保留；证据：evidence/selection-checks.txt、evidence/selection-smoke.png。
+
+# 普通上传自动分片阶段记录
+
+- 移除手动分片 UI，普通入口自动分流：<=300,000,000 bytes 原 API，超过阈值 8MiB 分片：PASS。
+- 保留批量 3 并发、逐文件状态/进度、超限零请求、防重复、失败独立、结束刷新：PASS。
+- 网络重试、刷新后重选自动续传/校验并跳过已有片、幂等创建/完成、用户隔离、清理、禁用存储回退：PASS。
+- 实际 300,000,001 bytes 文件、主动断线/刷新续传、三文件完整批次、下载 SHA-256：PASS。
+- 最终 Node 10 项、gofmt、go test ./...、go vet ./...、构建：PASS。可选 MinIO/kernel mount 本轮 NOT_RUN（历史完整验收保持）。
+- 证据：evidence/automatic-upload-checks.txt、evidence/automatic-upload-smoke.png；隔离 tmpfs 已清理，38125 独立 demo 已更新并保留其数据卷；38120/live 未触碰。
+- 不 commit/push、不改原索引；OpenCode/DeepSeek/后台 Codex/子 Agent=0。
+
+# 普通批量上传阶段记录
+
+- 基线：feature/full-netdisk-task，HEAD=3250d42；本轮不 commit/push，不触碰 live 卷。
+- multiple 选择、复用单文件 API、最多 3 并发、逐文件等待/上传中/成功/失败、失败独立继续、超限零请求、完成总数、结束刷新、防重复：PASS。
+- Node 行为测试 5 项、Go 网页/原上传专项、gofmt、go test ./...、go vet ./...：PASS。
+- 新 tmpfs 实例真实浏览器三文件上传/下载哈希/并发/重复提交/目录刷新：PASS；五文件混合批次的真实 400、超限零请求、等待状态和其余成功：PASS；JS errors 为空。
+- 证据：evidence/batch-upload-checks.txt、evidence/batch-upload-smoke.png。仅清理本轮隔离资源，源码保留未提交。
+- 运行版本跟进：用户原地址 38120 运行旧二进制；原服务/live 未操作。已启动全新独立 demo http://127.0.0.1:38125/，当前批量版实际三文件 PASS，保留运行供用户使用；新卷和账号独立，需要新注册。页面明确 Ctrl/Shift 多选。
+
+# 完整版阶段记录
 
 - TASK：BINGYAN-NETDISK-FULL-REQUIREMENTS-VISIBLE-APP-001；BRANCH：feature/full-netdisk-task；用户已授权完整版本地提交。
 - 接管基线 f04850f 和未提交 Full A；重新测试，保留已有实现及原暂存内容。
@@ -106,3 +156,38 @@
 ## S1 历史待办
 
 用户提供真实 Git 姓名与邮箱后创建首个规范提交。本轮完成即停止，不进入 S2。
+
+## 最终封版检查（2026-10-06，BLOCKED）
+
+TASK=BINGYAN-NETDISK-FINAL-CLOSEOUT-001。当前源码的最终隔离回归 PASS：Node 18 项、真实 Windows sync 独立进程、gofmt 空输出、go test ./...、go vet ./...、三个 Linux 程序及 Windows sync 构建；真实 MinIO、TCP NFSv3、kernel mount 读写/目录操作、两独立 P2P CLI 直传及 SHA-256、浏览器注册/登录/目录/原生三文件上传下载/勾选/ZIP/批量分享/账户设置 PASS。普通入口实际上传 300,000,001 bytes（36 片），下载内容一致；JS errors 为空。
+
+正式 app 与 38125 demo 在接管时已停止。正式卷唯一既有挂载者为 bingyan-netdisk-app；只读挂载完成一致性完整 tar 备份、SHA-256 校验和私有全卷/元数据/blob manifest。原基线：12 个账号、8 个文件、1 个目录、2 个会话、8 个物理 blob。备份和旧正式二进制保留在受限 ACL 的 ignored .tmp/final-closeout-20261006，不提交真实数据、秘密或私有 manifest。
+
+恢复到全新 bingyan-netdisk-final-copy-20261006 的迁移前完整性/外键/manifest PASS。当前版本启动并迁移后，账号认证记录 SQL 内部对比、账号/目录/逻辑文件元数据及内容 hash/size、原 8 文件 HTTP 下载均 PASS；物理 blob 从 8 变为 6，旧迁移去重流程清理两份内容相同的旧 storage_key。因此未满足 AGENTS.md 要求的全部原物理 blob manifest 完全一致，COPY_MIGRATION=FAIL，按停止条件判定 BLOCKED；未继续副本重启门槛或正式切换。
+
+停止后再次只读核对正式卷，原计数/元数据/全部 8 个 blob hash/size 仍与基线一致。未 stage/commit/main 更新/push、未替换正式 bin/netdisk、未触碰 live schema、未创建正式合成账号。原工作树/索引完整保留。远端新增 README-only 73251fe 与 feature 分叉已获取分析，后续只能保留该历史正常合并，禁止 force push。
+
+本轮 tmpfs smoke 与 MinIO 已停止并删除；失败副本容器已停止，副本卷、完整备份和私有诊断保留。38120 与 38125 保持接管时的停止状态。OpenCode/DeepSeek/子 Agent/后台 Codex=0。完整脱敏结果见 evidence/final-closeout-checks.txt。下一步需先解决物理副本保留与严格迁移验收合同，再从备份做全新副本迁移及重启验收；不得以逻辑文件一致替代本任务的物理 manifest 门槛。
+
+## 佳琛网盘改名与数据位置（2026-10-07）
+
+- 已完成：页面品牌 5 处及 README 标题改为“佳琛网盘”；两个现有网页测试、Linux 构建及 tmpfs 隔离 HTTP 首页/healthz 检查 PASS。
+- 已完成：正式卷只读检查，12 账号、8 文件、1 目录、2 会话、8 blob，integrity/foreign keys 与原 hash/size 均 PASS。正式上传内容在 bingyan-netdisk-data 的 /data/blobs，账号/文件/目录元数据在 /data/netdisk.db；当前未启用 S3/MinIO。
+- 已确认：demo 与副本迁移各自使用独立命名卷；完整正式备份、历史副本及测试状态在项目 ignored .tmp。详细路径、大小与检查见 DEVLOG 和 evidence/final-closeout-checks.txt 的 2026-10-07 增补。
+- 待完成：副本迁移阻塞解除并通过封版门槛后，正式 38120 才能更新到含新名称的版本；当前正式 app 仍停止，旧二进制和原用户数据保持完整。
+
+## 移动硬盘备份、归档与恢复（2026-10-07）
+
+按用户“这些先不管，先把软件功能实现”的后续指令，暂缓服务器选购、流量方案和正式封版，完成软件功能：
+
+- 已完成：账号文件与空目录备份清单；本机持续拉取到指定移动硬盘目录，分段续传、分段及整文件校验、版本保留、服务器删除保留本地副本。
+- 已完成：硬盘标识及路径绑定、缺盘/换盘/空间/路径边界保护、进程锁、持久重试预算；不会在缺失的挂载位置自动创建替代目录。
+- 已完成：显式单文件归档释放在线引用；服务端事务核对备份内容和完整目录元数据，保留共享 blob，处理请求回执丢失。网页可查看硬盘标签、归档位置与恢复记录。
+- 已完成：单文件/历史版本/全部最新备份恢复、空目录重建、重复恢复避免重复发布、明确授权恢复到新服务器或新账号。客户端文件备份不包含服务端数据库和账号体系。
+- 已完成：Linux 三程序及 Windows sync 构建；新版 Windows 客户端安装到 ignored bin/netdisk-sync.exe，旧客户端备份到 ignored .tmp。使用说明见 docs/removable-backup.md。
+- 已完成：Go 全量测试/vet/gofmt、pull/archive race、Node 18 项、真实 MinIO、kernel NFS、双进程 P2P、Windows 原有上传及新增下载/归档/恢复、浏览器归档/多选上传/勾选/账户设置/退出验收，详见 evidence/removable-backup-checks.txt。
+- 仍待封版：此前 COPY_MIGRATION 物理 blob 保留门槛没有改变；本轮未 stage/commit/main 更新/push、未部署正式 38120、未挂载或修改 live volume。
+
+## GitHub 源码发布（2026-10-07 后续请求）
+
+用户在上述软件实现完成后明确要求“更新GitHub”，本次按独立源码发布处理：将已验收改动按白名单提交，普通合并保留远端 README 提交，再更新现有 origin/main。部署与严格副本迁移仍暂缓，README 保留阻塞事实。远端 main 预检查仍为既知 73251fe，无额外新提交；源码测试结果沿用本次当前代码的实际验收，业务代码没有再修改。私有备份、真实数据和二进制持续忽略，不修改 remote、不 force push。

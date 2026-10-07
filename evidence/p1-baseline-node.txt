@@ -1,0 +1,26 @@
+✔ blocked browser storage still loads the upload feature (1.1982ms)
+✔ 300MB boundary uses one ordinary request; larger files use bounded sequential parts and progress (5.9472ms)
+✔ lost creation, part and completion responses retry the same operation without publishing twice (1.6882ms)
+✔ a failed transfer survives page reload, reselecting verifies and skips existing parts; changed source is rejected (2.9487ms)
+✔ durable completion receipt verifies source after reload; logout removes only upload metadata (1.8291ms)
+✔ queue caps concurrency at three, continues after failures and reports every transition (4.2068ms)
+✔ oversize files are skipped without a request; equality and empty files are allowed (1.0256ms)
+✔ all skipped, empty selection and unknown limits cannot send requests (4.5172ms)
+✔ real submit handler rejects duplicates, uses the single-file API and refreshes only after settling (4.8305ms)
+✔ real submit handler skips every oversize file, refreshes and clears private results on logout (2.4402ms)
+✔ checkboxes, partial/full select, clear and refreshed selection stay scoped to the visible directory (19.2331ms)
+✔ parent navigation climbs one level, ancestor breadcrumbs and home return to root, and busy navigation cannot duplicate (3.545ms)
+✔ failed navigation preserves the current directory, parent and selection until every directory read succeeds (3.4711ms)
+✔ move excludes selected directories and descendants; download uses one archive URL for exact selection (3.6971ms)
+✔ rename waits for confirmation, rejects duplicate submit, continues failures, refreshes and keeps only failed selection (2.775ms)
+✔ mixed folder/file delete confirms contents, uses owner-checked endpoints and logout clears shares/results (3.7471ms)
+✔ session expiry during a batch sends no further private mutations and displays no old resource results (1.9166ms)
+✔ partial sharing leaves only failures selected so retry does not create links for completed items (3.6395ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 137.2299
